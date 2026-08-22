@@ -59,5 +59,5 @@ export {
 } from './permissions/manager.js';
 
 // ── agent ────────────────────────────────────────────────────────────────────
-export { runAgent, type AgentEvent, type AgentRunOptions } from './agent/loop.js';
+export { runAgent, type AgentEvent, type AgentRunOptions, type AgentRunResult } from './agent/loop.js';
 export { buildSystemPrompt, type PromptContext } from './agent/prompt.js';

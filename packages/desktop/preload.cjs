@@ -1,0 +1,20 @@
+// Sandboxed preloads must be CommonJS — contextBridge + ipcRenderer only.
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('qodea', {
+  listProviders: () => ipcRenderer.invoke('qodea:providers'),
+
+  startSession: (req) => ipcRenderer.invoke('qodea:start', req),
+
+  respondPermission: (sessionId, requestId, approved) =>
+    ipcRenderer.invoke('qodea:respond', { sessionId, requestId, approved }),
+
+  stopSession: (sessionId) => ipcRenderer.invoke('qodea:stop', sessionId),
+
+  /** Subscribe to agent events; returns an unsubscribe function. */
+  onEvent: (callback) => {
+    const listener = (_event, sessionId, payload) => callback(sessionId, payload);
+    ipcRenderer.on('qodea:event', listener);
+    return () => ipcRenderer.removeListener('qodea:event', listener);
+  },
+});

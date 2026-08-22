@@ -65,9 +65,9 @@ Without a config file, well-known env vars are auto-detected:
 ## Roadmap
 
 - [x] **M0** — monorepo, config, provider adapters, live streaming
-- [ ] **M1** — agent loop + core tools (read/write/edit/glob/grep/bash/todo) + permission system (headless)
-- [ ] **M2** — Electron shell + chat UI + the mascot (white → red when debugging)
-- [ ] **M3** — sessions (event-sourced SQLite), resume, plan mode, todo panel
+- [x] **M1** — agent loop + core tools (read/write/edit/glob/grep/bash/todo) + permission system
+- [x] **M2** — Electron shell + chat UI + the mascot (white → red when debugging)
+- [ ] **M3** — plan mode polish, todo panel visualization, sessions list
 - [ ] **M4 = v1** — setup wizard, compaction, cost meter, NSIS installer
 - [ ] **v1.5** — subagents with per-agent personas, skills (SKILL.md), browser use
 

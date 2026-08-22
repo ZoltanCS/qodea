@@ -31,6 +31,8 @@ export interface AgentRunOptions {
   asker?: PermissionAsker;
   systemPrompt?: string;
   tools?: Tool[];
+  /** Seed transcript — pass a previous result's messages to continue a chat. */
+  initialMessages?: TurnMessage[];
   maxTurns?: number;
   maxTokens?: number;
   temperature?: number;
@@ -41,18 +43,18 @@ export interface AgentRunResult {
   reason: 'complete' | 'max-turns' | 'aborted';
   turns: number;
   state: AgentState;
+  /** Full transcript including this run — feed it back as initialMessages to continue. */
+  messages: TurnMessage[];
 }
 
 const DEFAULT_MAX_TURNS = 25;
 
-/**
- * The Qodea agent loop:
+/** The Qodea agent loop:
  *   task → LLM stream → tool calls → execute (with permissions) → feed results back → repeat.
- * Yields AgentEvents as it goes and resolves with a summary when finished.
- */
+ * Yields AgentEvents as it goes and resolves with the full transcript when finished. */
 export async function* runAgent(
   opts: AgentRunOptions,
-): AsyncGenerator<AgentEvent, void, unknown> {
+): AsyncGenerator<AgentEvent, AgentRunResult, unknown> {
   const mode = opts.mode ?? 'default';
   const tools = opts.tools ?? createDefaultTools();
   const specs = tools.map(toSpec);
@@ -69,10 +71,15 @@ export async function* runAgent(
         opts.systemPrompt ??
         buildSystemPrompt({ cwd: opts.cwd, tools: specs }),
     },
+    ...(opts.initialMessages ?? []),
     userMessage(opts.task),
   ];
 
   let lastUsage: Usage | undefined;
+  const finish = (
+    reason: AgentRunResult['reason'],
+    turns: number,
+  ): AgentRunResult => ({ reason, turns, state, messages });
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     yield { type: 'turn-start', turn };
@@ -104,14 +111,14 @@ export async function* runAgent(
 
     if (opts.signal?.aborted) {
       yield { type: 'done', reason: 'aborted', turns: turn };
-      return;
+      return finish('aborted', turn);
     }
 
     if (calls.length === 0) {
       messages.push({ role: 'assistant', content: text });
       if (lastUsage) yield { type: 'usage', ...lastUsage };
       yield { type: 'done', reason: 'complete', turns: turn };
-      return;
+      return finish('complete', turn);
     }
 
     messages.push({ role: 'assistant', content: text, toolCalls: calls });
@@ -125,11 +132,12 @@ export async function* runAgent(
     if (stop === 'length') {
       // context exhausted mid-action — surface instead of looping into a wall
       yield { type: 'done', reason: 'max-turns', turns: turn };
-      return;
+      return finish('max-turns', turn);
     }
   }
 
   yield { type: 'done', reason: 'max-turns', turns: maxTurns };
+  return finish('max-turns', maxTurns);
 }
 
 interface ToolOutcome {

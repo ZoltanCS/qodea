@@ -4,12 +4,19 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "main": "./main.mjs",
+  "main": "./dist/main.js",
   "scripts": {
-    "dev": "electron . --dev",
-    "start": "electron ."
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "pnpm --filter @qodea/core build && pnpm build && electron . --dev",
+    "start": "pnpm --filter @qodea/core build && pnpm build && electron ."
+  },
+  "dependencies": {
+    "@qodea/core": "workspace:*"
   },
   "devDependencies": {
-    "electron": "^43.4.1"
+    "@types/node": "^24.0.0",
+    "electron": "^43.4.1",
+    "typescript": "^7.0.2"
   }
 }
