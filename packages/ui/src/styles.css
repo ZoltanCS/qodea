@@ -593,6 +593,117 @@ body {
   color: #2c5e33;
 }
 
+/* ── profile modal + avatar editor ── */
+.modal-back {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(5, 5, 8, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-modal {
+  width: min(940px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.p-body {
+  display: flex;
+  gap: 26px;
+  padding: 22px 28px;
+  overflow: hidden;
+}
+
+.p-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.p-note { font-size: 12px; color: var(--faint); }
+
+.p-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+.p-right {
+  width: 340px;
+  overflow-y: auto;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+
+.p-tabs { margin-bottom: 14px; }
+.p-tabs button { flex: 1; }
+
+.p-h {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin: 16px 0 8px;
+}
+
+.opt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--dim);
+  cursor: pointer;
+  background: none;
+  padding: 6px 2px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: border-color 0.12s, background 0.12s;
+}
+.opt:hover { background: var(--hover); }
+.opt.on { border-color: var(--faint); background: var(--panel); }
+.opt svg { width: 42px; height: 42px; }
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s;
+}
+.swatch:hover { transform: scale(1.08); }
+.swatch.on { outline: 2px solid var(--text); outline-offset: 3px; }
+
+.av-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: qb-breathe 4.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import type { SessionSummary, ProjectInfo } from '../ipc.d';
-import { QodeaBot } from '../mascot/QodeaBot';
+import { Avatar } from '../avatar/Avatar';
+import type { AvatarCfg } from '../avatar/avatarConfig';
 import { Settings } from '../settings/Settings';
 
 interface SidebarProps {
   sessions: SessionSummary[];
   projects: ProjectInfo[];
   activeSessionId: string | null;
+  avatar: AvatarCfg;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
   onNewChat: () => void;
@@ -17,6 +19,7 @@ interface SidebarProps {
   settingsOpen: boolean;
   onToggleSettings: () => void;
   onCloseSettings: () => void;
+  onOpenAccount: () => void;
 }
 
 function projectName(cwd: string): string {
@@ -51,14 +54,17 @@ export function Sidebar(props: SidebarProps) {
         >
           <span className="ic">⚙</span> Beállítások
         </button>
-        <div className="account">
-          <QodeaBot mood="idle" color="cream" size={26} />
+        <div className="account" onClick={props.onOpenAccount} role="button" title="Profil és avatar">
+          <Avatar cfg={props.avatar} size={28} />
           <span className="acc-name">Zoltán</span>
           <span className="spacer" />
           <button
             className="mini-ic"
             title={props.theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
-            onClick={props.onToggleTheme}
+            onClick={(e) => {
+              e.stopPropagation();
+              props.onToggleTheme();
+            }}
           >
             {props.theme === 'dark' ? '☀' : '☾'}
           </button>

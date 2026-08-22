@@ -4,6 +4,8 @@ import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
 import { Sidebar } from './sidebar/Sidebar';
+import { AvatarEditor } from './avatar/AvatarEditor';
+import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
 
 type Theme = 'dark' | 'light';
 
@@ -21,6 +23,8 @@ export function App() {
   const [draft, setDraft] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [showSettings, setShowSettings] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [avatarCfg, setAvatarCfg] = useState<AvatarCfg>(loadAvatar);
   const streamRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,6 +156,8 @@ export function App() {
           setShowSettings(false);
           void chat.reloadProviders();
         }}
+        avatar={avatarCfg}
+        onOpenAccount={() => setShowProfile(true)}
       />
 
       <div className="main">
@@ -242,6 +248,27 @@ export function App() {
           </>
         )}
       </div>
+
+      {showProfile && (
+        <div className="modal-back" onClick={() => setShowProfile(false)}>
+          <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="set-head">
+              <h2>Profil és avatar</h2>
+              <button className="icon-btn" onClick={() => setShowProfile(false)} title="Bezárás">
+                ✕
+              </button>
+            </header>
+            <AvatarEditor
+              initial={avatarCfg}
+              onSave={(cfg) => {
+                setAvatarCfg(cfg);
+                saveAvatar(cfg);
+                setShowProfile(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
