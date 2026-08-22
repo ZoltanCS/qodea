@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar } from './Avatar';
 import {
   COLORS,
@@ -16,7 +16,6 @@ interface Props {
 export function AvatarEditor({ initial, onSave }: Props) {
   const [cfg, setCfg] = useState<AvatarCfg>(initial);
   const [tab, setTab] = useState<'look' | 'move'>('move');
-  const previewRef = useRef<HTMLDivElement>(null);
 
   // live-apply: no explicit save button needed
   useEffect(() => {
@@ -34,37 +33,10 @@ export function AvatarEditor({ initial, onSave }: Props) {
     });
   };
 
-  const savePng = () => {
-    const svg = previewRef.current?.querySelector('svg');
-    if (!svg) return;
-    const xml = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, 512, 512);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((pngBlob) => {
-        if (!pngBlob) return;
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(pngBlob);
-        a.download = 'qodea-avatar.png';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      });
-    };
-    img.src = url;
-  };
-
   return (
     <div className="p-body">
       {/* live preview */}
-      <div className="p-left" ref={previewRef}>
+      <div className="p-left">
         <Avatar cfg={cfg} size={230} animate={tab === 'move'} />
         <span className="p-note">
           {tab === 'move' ? 'A kurzort követi és lélegzik.' : 'Statikus nézet.'}
@@ -72,9 +44,6 @@ export function AvatarEditor({ initial, onSave }: Props) {
         <div className="p-actions">
           <button className="btn" onClick={surprise} title="Véletlen kombináció">
             Lépj meg
-          </button>
-          <button className="btn" onClick={savePng}>
-            PNG mentése
           </button>
         </div>
       </div>

@@ -48,9 +48,9 @@ const PROFILES: Record<AvatarCfg['shape'], (t: number) => Pt> = {
     const c = Math.cos(t);
     const s = Math.sin(t);
     const r = 82 / Math.pow(Math.pow(Math.abs(c), p) + Math.pow(Math.abs(s), p), 1 / p);
-    return { x: 100 + r * c * 0.74, y: 100 + r * s * 1.14 };
+    return { x: 100 + r * c * 0.72, y: 100 + r * s * 1.08 };
   },
-  triangle: (t) => pt(polyR(3, 88, t, 0.16), t),
+  triangle: (t) => pt(polyR(3, 46, t, 0.15), t),
   hexagon: (t) => pt(polyR(6, 74, t, 0.14), t),
   cloud: (t) => {
     const p = pt(
