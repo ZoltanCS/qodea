@@ -19,3 +19,8 @@ Thumbs.db
 
 # logs
 *.log
+
+# stray experiment outputs
+packages/desktop/index.html
+packages/desktop/script.js
+packages/desktop/styles.css
