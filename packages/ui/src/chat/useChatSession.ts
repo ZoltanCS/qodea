@@ -9,6 +9,9 @@ import type {
   ProjectInfo,
 } from '../ipc.d';
 import type { PermissionMode, TurnMessage } from '@qodea/core';
+import { loadPrefs, savePrefs } from './prefs';
+
+const initialPrefs = loadPrefs();
 
 export interface ChatItem {
   id: string;
@@ -49,14 +52,37 @@ export function useChatSession() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [uiMode, setUiMode] = useState<'agent' | 'experts'>('agent');
+  const [uiMode, setUiModeState] = useState<'agent' | 'experts'>(initialPrefs.uiMode ?? 'agent');
   const [flash, setFlash] = useState<BotMood | null>(null);
   const [tokensUsed, setTokensUsed] = useState(0);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [providerId, setProviderId] = useState<string>('');
   const [model, setModel] = useState<string>('');
-  const [mode, setMode] = useState<PermissionMode>('default');
-  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium');
+  const [mode, setModeState] = useState<PermissionMode>(initialPrefs.mode ?? 'default');
+  const [effort, setEffortState] = useState<'low' | 'medium' | 'high'>(
+    initialPrefs.effort ?? 'medium',
+  );
+
+  // persist agent prefs on change
+  useEffect(() => {
+    savePrefs({ mode, effort, uiMode });
+  }, [mode, effort, uiMode]);
+
+  const setMode = setModeState;
+  const setEffort = setEffortState;
+  const setUiMode = setUiModeState;
+
+  // live-sync when prefs change from the Settings modal
+  useEffect(() => {
+    const handler = () => {
+      const p = loadPrefs();
+      if (p.mode) setModeState(p.mode);
+      if (p.effort) setEffortState(p.effort);
+      if (p.uiMode) setUiModeState(p.uiMode);
+    };
+    window.addEventListener('qodea-prefs-changed', handler);
+    return () => window.removeEventListener('qodea-prefs-changed', handler);
+  }, []);
   const [cwd, setCwd] = useState<string>('');
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 

@@ -536,6 +536,108 @@ body {
 .set-foot .saved { color: #6fbf8f; font-size: 12.5px; }
 .btn.primary { background: #23303f; border-color: #33475e; color: #dbe7f5; }
 
+/* ── settings hub ── */
+.settings.hub { flex: 1; min-height: 0; }
+
+.hub-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+}
+
+.cat-rail {
+  border-right: 1px solid var(--line);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  text-align: left;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cat-item:hover { background: var(--hover); color: var(--text); }
+.cat-item.on { background: var(--u-bubble); color: var(--text); font-weight: 550; }
+.cat-item .ic { width: 17px; text-align: center; }
+.cat-item .lbl { flex: 1; }
+
+.soon {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #d19a3d;
+  border: 1px solid rgba(209, 154, 61, 0.35);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.hub-pane {
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.pad { padding: 8px 4px; line-height: 1.6; }
+.warn { color: #e2705a !important; }
+
+.prov-split {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.pane-actions { display: flex; align-items: center; gap: 10px; padding-top: 6px; }
+
+.agents-pane { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.agents-pane .p-h { margin-top: 12px; }
+.agents-pane .seg button { flex: 1; }
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 480px;
+  line-height: 1.5;
+}
+.about h3 { margin: 8px 0 0; font-size: 18px; }
+.small { font-size: 12px; }
+
+.soon-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  min-height: 320px;
+}
+.soon-panel .soon-icon { font-size: 40px; }
+.soon-panel h3 { margin: 4px 0 0; }
+.soon-panel p { max-width: 380px; margin: 0; line-height: 1.55; }
+.badge {
+  margin-top: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #d19a3d;
+  border: 1px solid rgba(209, 154, 61, 0.4);
+  padding: 3px 12px;
+  border-radius: 999px;
+}
+
 /* ── home screen ── */
 .home {
   flex: 1;
