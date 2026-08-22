@@ -48,6 +48,33 @@ function createWindow(): BrowserWindow {
     },
   });
 
+  // Dev diagnostics: surface renderer/preload failures in the terminal.
+  win.webContents.on('preload-error', (_e, p, err) => {
+    console.error(`[qodea] preload-error: ${p}:`, err);
+  });
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[qodea] render-process-gone:', JSON.stringify(details));
+  });
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error(`[qodea] did-fail-load ${code} ${desc} ${url}`);
+  });
+  type ConsoleArgs = [
+    event: { message?: string; sourceId?: string; lineNumber?: number } | number,
+    level?: unknown,
+    message?: string,
+    line?: unknown,
+    sourceId?: string,
+  ];
+  win.webContents.on('console-message', (...args: ConsoleArgs) => {
+    const first = args[0];
+    if (typeof first === 'object' && first !== null) {
+      const { message, sourceId, lineNumber } = first;
+      if (message) console.log(`[renderer] ${message} (${sourceId ?? '?'}:${lineNumber ?? '?'})`);
+    } else if (typeof args[2] === 'string') {
+      console.log(`[renderer] ${args[2]} (${args[4] ?? '?'}:${String(args[3])})`);
+    }
+  });
+
   return win;
 }
 
@@ -349,7 +376,10 @@ async function loadDev(win: BrowserWindow): Promise<void> {
       await win.loadURL(uiDevUrl);
       return;
     } catch {
-      if (attempt === 1) console.log(`[qodea] waiting for UI dev server at ${uiDevUrl} ...`);
+      if (attempt === 1) {
+        console.log(`[qodea] waiting for UI dev server at ${uiDevUrl} ...`);
+        console.log('[qodea] (ha sokáig áll: fut még egy régi pnpm/electron? taskkill /IM electron.exe /F)');
+      }
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
   }
