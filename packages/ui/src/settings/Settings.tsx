@@ -77,10 +77,15 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    void window.qodea.getConfig().then((res) => {
-      const ds = res.providers.map((p) => toDraft(p, p.id === res.defaultProvider));
-      setDrafts(ds.length > 0 ? ds : [blankDraft()]);
-    });
+    void window.qodea
+      .getConfig()
+      .then((res) => {
+        const ds = res.providers.map((p) => toDraft(p, p.id === res.defaultProvider));
+        setDrafts(ds.length > 0 ? ds : [blankDraft()]);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
   }, []);
 
   const active = drafts[activeIdx];
