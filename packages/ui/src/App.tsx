@@ -261,9 +261,9 @@ export function App() {
             <AvatarEditor
               initial={avatarCfg}
               onSave={(cfg) => {
-                // live-apply — modal stays open, changes persist instantly
                 setAvatarCfg(cfg);
                 saveAvatar(cfg);
+                setShowProfile(false);
               }}
             />
           </div>

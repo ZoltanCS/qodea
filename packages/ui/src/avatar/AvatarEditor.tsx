@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Avatar } from './Avatar';
 import {
   COLORS,
@@ -16,13 +16,6 @@ interface Props {
 export function AvatarEditor({ initial, onSave }: Props) {
   const [cfg, setCfg] = useState<AvatarCfg>(initial);
   const [tab, setTab] = useState<'look' | 'move'>('move');
-
-  // live-apply: no explicit save button needed
-  useEffect(() => {
-    const id = setTimeout(() => onSave(cfg), 220);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg]);
 
   const surprise = () => {
     const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)]!;
@@ -42,6 +35,9 @@ export function AvatarEditor({ initial, onSave }: Props) {
           {tab === 'move' ? 'A kurzort követi és lélegzik.' : 'Statikus nézet.'}
         </span>
         <div className="p-actions">
+          <button className="btn primary" onClick={() => onSave(cfg)} title="Alkalmaz és bezár">
+            Mentés
+          </button>
           <button className="btn" onClick={surprise} title="Véletlen kombináció">
             Lépj meg
           </button>
