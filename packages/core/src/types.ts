@@ -12,6 +12,34 @@ export interface ToolSpec {
   parametersJsonSchema: Record<string, unknown>;
 }
 
+/** A tool call requested by the model. */
+export interface ToolCallReq {
+  id: string;
+  name: string;
+  argumentsJson: string;
+}
+
+/**
+ * Internal transcript format — richer than the wire formats.
+ * Provider adapters map this to OpenAI (`role:"tool"`) or Anthropic
+ * (`tool_result` blocks) conventions.
+ */
+export type TurnMessage =
+  | { role: 'system'; content: string }
+  | { role: 'user'; content: string }
+  | { role: 'assistant'; content: string; toolCalls?: ToolCallReq[] }
+  | {
+      role: 'tool_result';
+      callId: string;
+      name: string;
+      content: string;
+      isError?: boolean;
+    };
+
+export function userMessage(content: string): TurnMessage {
+  return { role: 'user', content };
+}
+
 export interface Usage {
   inputTokens?: number;
   outputTokens?: number;
@@ -21,7 +49,7 @@ export type StopReason = 'end' | 'tool-use' | 'length' | 'other';
 
 /**
  * Normalized streaming events every provider adapter emits.
- * The M1 agent loop consumes exactly this — UI subscribes downstream.
+ * The agent loop consumes exactly this — UI subscribes downstream.
  */
 export type StreamEvent =
   | { type: 'text-delta'; text: string }
@@ -31,7 +59,7 @@ export type StreamEvent =
 
 export interface ChatRequest {
   model: string;
-  messages: ChatMessage[];
+  messages: TurnMessage[];
   tools?: ToolSpec[];
   temperature?: number;
   maxTokens?: number;

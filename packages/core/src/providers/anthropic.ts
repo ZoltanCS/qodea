@@ -7,12 +7,70 @@ import type {
   Provider,
   StopReason,
   StreamEvent,
+  ToolCallReq,
+  TurnMessage,
 } from '../types.js';
 
 /**
- * Anthropic Messages API adapter (streaming).
- * System messages are lifted to the top-level `system` param per Anthropic convention.
+ * Maps the internal transcript to Anthropic wire messages:
+ * assistant tool calls become `tool_use` blocks, results arrive as
+ * `tool_result` blocks inside the following user message.
  */
+export function toWireMessages(messages: TurnMessage[]): Anthropic.MessageParam[] {
+  const out: Anthropic.MessageParam[] = [];
+
+  for (const m of messages) {
+    if (m.role === 'system') continue;
+
+    if (m.role === 'user') {
+      out.push({ role: 'user', content: m.content });
+      continue;
+    }
+
+    if (m.role === 'assistant') {
+      const blocks: Anthropic.ContentBlockParam[] = [];
+      if (m.content) blocks.push({ type: 'text', text: m.content });
+      for (const tc of m.toolCalls ?? []) {
+        blocks.push({
+          type: 'tool_use',
+          id: tc.id,
+          name: tc.name,
+          input: parseJsonSafe(tc.argumentsJson),
+        });
+      }
+      if (blocks.length === 0) blocks.push({ type: 'text', text: '(no content)' });
+      out.push({ role: 'assistant', content: blocks });
+      continue;
+    }
+
+    // tool_result — merge consecutive results into a single user message
+    const block: Anthropic.ToolResultBlockParam = {
+      type: 'tool_result',
+      tool_use_id: m.callId,
+      content: m.content,
+      ...(m.isError ? { is_error: true } : {}),
+    };
+    const prev = out[out.length - 1];
+    if (prev && prev.role === 'user' && Array.isArray(prev.content)) {
+      (prev.content as Anthropic.ToolResultBlockParam[]).push(block);
+    } else {
+      out.push({ role: 'user', content: [block] });
+    }
+  }
+
+  return out;
+}
+
+function parseJsonSafe(json: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Anthropic Messages API adapter (streaming). */
 export class AnthropicProvider implements Provider {
   readonly id: string;
   readonly kind = 'anthropic' as const;
@@ -36,13 +94,7 @@ export class AnthropicProvider implements Provider {
       .filter((m) => m.role === 'system')
       .map((m) => m.content)
       .join('\n\n');
-
-    const messages: Anthropic.MessageParam[] = req.messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-        content: m.content,
-      }));
+    const messages = toWireMessages(req.messages);
 
     const stream = this.client.messages.stream(
       {

@@ -8,6 +8,7 @@ import type {
   ProviderKind,
   StopReason,
   StreamEvent,
+  TurnMessage,
 } from '../types.js';
 
 interface CompatOptions {
@@ -62,7 +63,7 @@ export class OpenAICompatProvider implements Provider {
       {
         model,
         stream: true,
-        messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: req.messages.map(toWireMessage),
         ...(req.tools && req.tools.length > 0
           ? {
               tools: req.tools.map((t) => ({
@@ -141,6 +142,37 @@ function flushTools(
     }
     pending.clear();
   })();
+}
+
+/**
+ * Maps the internal transcript to OpenAI chat-completions wire messages,
+ * including the tool-call / tool-result round trip (`role:"tool"`).
+ */
+export function toWireMessage(m: TurnMessage): OpenAI.ChatCompletionMessageParam {
+  if (m.role === 'system' || m.role === 'user') {
+    return { role: m.role, content: m.content };
+  }
+  if (m.role === 'assistant') {
+    return {
+      role: 'assistant',
+      ...(m.content ? { content: m.content } : { content: null }),
+      ...(m.toolCalls && m.toolCalls.length > 0
+        ? {
+            tool_calls: m.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: tc.argumentsJson },
+            })),
+          }
+        : {}),
+    };
+  }
+  // tool_result
+  return {
+    role: 'tool',
+    tool_call_id: m.callId,
+    content: m.content,
+  };
 }
 
 function mapFinishReason(reason: string): StopReason {

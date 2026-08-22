@@ -7,10 +7,12 @@ export type {
   Role,
   StopReason,
   StreamEvent,
+  ToolCallReq,
   ToolSpec,
+  TurnMessage,
   Usage,
 } from './types.js';
-export { providerKinds } from './types.js';
+export { providerKinds, userMessage } from './types.js';
 
 // ── config ───────────────────────────────────────────────────────────────────
 export {
@@ -33,4 +35,29 @@ export { PROVIDER_PRESETS, type Preset } from './providers/presets.js';
 export { createProvider } from './providers/factory.js';
 export { OpenAICompatProvider } from './providers/openai-compat.js';
 export { AzureProvider } from './providers/azure.js';
-export { AnthropicProvider } from './providers/anthropic.js';
+export { AnthropicProvider, toWireMessages as anthropicToWireMessages } from './providers/anthropic.js';
+
+// ── tools ────────────────────────────────────────────────────────────────────
+export { createDefaultTools, toSpec } from './tools/registry.js';
+export type { AgentState, TodoItem, Tool, ToolContext, ToolKind } from './tools/types.js';
+export { emptyAgentState, InvalidArgsError, ToolError } from './tools/types.js';
+export { readTool } from './tools/read.js';
+export { writeTool } from './tools/write.js';
+export { editTool } from './tools/edit.js';
+export { globTool } from './tools/glob.js';
+export { grepTool } from './tools/grep.js';
+export { bashTool } from './tools/bash.js';
+export { todoWriteTool, renderTodos } from './tools/todo-write.js';
+
+// ── permissions ──────────────────────────────────────────────────────────────
+export {
+  PermissionManager,
+  actionKey,
+  type PermissionAsk,
+  type PermissionAsker,
+  type PermissionMode,
+} from './permissions/manager.js';
+
+// ── agent ────────────────────────────────────────────────────────────────────
+export { runAgent, type AgentEvent, type AgentRunOptions } from './agent/loop.js';
+export { buildSystemPrompt, type PromptContext } from './agent/prompt.js';
