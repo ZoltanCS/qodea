@@ -77,6 +77,7 @@ export class OpenAICompatProvider implements Provider {
             }
           : {}),
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+        ...(req.reasoningEffort ? { reasoning_effort: req.reasoningEffort } : {}),
         // NOTE: max_tokens keeps compat with non-OpenAI endpoints; newer OpenAI
         // models accept it as an alias of max_completion_tokens.
         ...(req.maxTokens !== undefined ? { max_tokens: req.maxTokens } : {}),

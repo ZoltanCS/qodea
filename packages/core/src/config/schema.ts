@@ -19,6 +19,8 @@ export const providerEntrySchema = z.object({
   /** Name of the environment variable holding the API key. */
   apiKeyEnv: z.string().optional(),
   defaultModel: z.string().optional(),
+  /** Context window size in tokens — powers the UI's usage ring (default 131072). */
+  contextWindow: z.number().int().positive().optional(),
   azure: z
     .object({
       endpoint: z.string().url(),

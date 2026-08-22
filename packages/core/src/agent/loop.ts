@@ -36,6 +36,8 @@ export interface AgentRunOptions {
   maxTurns?: number;
   maxTokens?: number;
   temperature?: number;
+  /** Reasoning effort for thinking models. */
+  reasoningEffort?: 'low' | 'medium' | 'high';
   signal?: AbortSignal;
 }
 
@@ -94,6 +96,7 @@ export async function* runAgent(
       tools: specs,
       ...(opts.maxTokens !== undefined ? { maxTokens: opts.maxTokens } : {}),
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      ...(opts.reasoningEffort ? { reasoningEffort: opts.reasoningEffort } : {}),
       signal: opts.signal,
     })) {
       if (ev.type === 'text-delta') {

@@ -63,6 +63,8 @@ export interface ChatRequest {
   tools?: ToolSpec[];
   temperature?: number;
   maxTokens?: number;
+  /** Reasoning effort for thinking models ('low' | 'medium' | 'high'), mapped per-API. */
+  reasoningEffort?: 'low' | 'medium' | 'high';
   signal?: AbortSignal;
 }
 

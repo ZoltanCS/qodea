@@ -7,6 +7,7 @@ export interface ProviderInfo {
   baseUrl: string | null;
   defaultModel: string | null;
   azureDeployment: string | null;
+  contextWindow?: number;
 }
 
 export interface StartRequest {
@@ -15,6 +16,7 @@ export interface StartRequest {
   model?: string;
   mode: PermissionMode;
   cwd: string;
+  reasoningEffort?: 'low' | 'medium' | 'high';
   history?: unknown[];
 }
 

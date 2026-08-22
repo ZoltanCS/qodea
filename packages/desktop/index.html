@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qodea – Kód, ami életre kel</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Particle canvas background -->
+  <canvas id="particles"></canvas>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="logo">
+        <span class="logo-icon">◇</span>
+        <span class="logo-text">Qodea</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Funkciók</a>
+        <a href="#about">Rólunk</a>
+        <a href="#contact">Kapcsolat</a>
+        <button class="btn btn-outline">Dokumentáció</button>
+        <button class="btn btn-primary">Kezdj neki</button>
+      </div>
+      <button class="mobile-toggle" aria-label="Menü">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pulse"></span>
+        Új verzió elérhető – v2.4
+      </div>
+      <h1 class="hero-title">
+        <span class="gradient-text">Kód, ami életre kel</span><br>
+        a gépelés pillanatában
+      </h1>
+      <p class="hero-sub">
+        A Qodea egy következő generációs AI mérnök asszisztens, amely valós időben érti, írja és
+        refaktorálja a kódodat – mintha egy zseniális fejlesztőtárs ülne melletted.
+      </p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg">
+          Próbáld ki ingyen
+          <span class="arrow">→</span>
+        </button>
+        <button class="btn btn-ghost btn-lg">
+          <span class="play-icon">▶</span>
+          Demó megtekintése
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value" data-count="120">0</span>k+
+          <span class="stat-label">Fejlesztő</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" data-count="99">0</span>%
+          <span class="stat-label">Elégedettség</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" data-count="10">0</span>M+
+          <span class="stat-label">Sor kód írva</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating code snippet decoration -->
+    <div class="hero-visual">
+      <div class="code-card code-card-1">
+        <div class="card-dots"><span></span><span></span><span></span></div>
+        <pre><code><span class="kw">const</span> <span class="fn">qodea</span> = <span class="fn">createAgent</span>({
+  <span class="prop">model</span>: <span class="str">'opus-4.5'</span>,
+  <span class="prop">tools</span>: [<span class="str">'fs'</span>, <span class="str">'grep'</span>, <span class="str">'bash'</span>],
+  <span class="prop">autonomy</span>: <span class="kw">true</span>
+});
+
+<span class="kw">await</span> <span class="fn">qodea</span>.<span class="fn">solve</span>(<span class="str">'Refaktoráld az API réteget'</span>);</code></pre>
+      </div>
+      <div class="code-card code-card-2">
+        <div class="card-dots"><span></span><span></span><span></span></div>
+        <pre><code><span class="cm">// A Qodea megtalálta és kijavított</span>
+<span class="cm">// egy race condition hibát a</span>
+<span class="cm">// WebSocket kezelőben – 2.3s alatt.</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="section-header">
+      <span class="section-tag">Funkciók</span>
+      <h2>Minden, amire egy fejlesztőnek szüksége van</h2>
+      <p>A Qodea nem csak kiegészít – átalakítja a munkafolyamatodat.</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Valós idejű kódértés</h3>
+        <p>A Qodea azonnal elemzi a teljes kódbázist, és másodpercek alatt ad kontextus-alapú válaszokat.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Intelligens keresés</h3>
+        <p>RegEx, szemantikus keresés és fájlminták – a megfelelő kód mindig kéznél van.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛠️</div>
+        <h3>Autonóm refaktorálás</h3>
+        <p>Megbízható, precíz kódmódosítások automatikusan, emberi beavatkozás nélkül.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Lokális futtatás</h3>
+        <p>A kódod soha nem hagyja el a gépedet. Teljes privacy, teljes kontroll.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌍</div>
+        <h3>Többplatformos támogatás</h3>
+        <p>Windows, macOS és Linux – a Qodea mindenhol otthon van.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>Egykattintásos telepítés</h3>
+        <p>Nincs bonyolult konfiguráció. Telepítsd és kezdj el dolgozni azonnal.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- About / How it works -->
+  <section class="about" id="about">
+    <div class="about-grid">
+      <div class="about-content">
+        <span class="section-tag">Hogyan működik</span>
+        <h2>A mesterséges intelligencia és az emberi kreativitás találkozása</h2>
+        <p>A Qodea a legújabb nyelvi modelleket használja, amelyeket kifejezetten kódgenerálásra és szoftverfejlesztési feladatokra optimalizáltunk. Az AI nem csak válaszol – aktívan cselekszik: fájlokat olvas, parancsokat futtat, és folyamatosan tanul a projekt szerkezetéből.</p>
+        <ul class="about-list">
+          <li>✅ Kontextus-érzékeny kódgenerálás</li>
+          <li>✅ Automatikus tesztelés és validáció</li>
+          <li>✅ Verziókövetés-barát módosítások</li>
+          <li>✅ Személyre szabható munkafolyamatok</li>
+        </ul>
+      </div>
+      <div class="about-visual">
+        <div class="glow-orb glow-1"></div>
+        <div class="glow-orb glow-2"></div>
+        <div class="glow-orb glow-3"></div>
+        <div class="terminal-window">
+          <div class="terminal-bar">
+            <span class="term-dot dot-red"></span>
+            <span class="term-dot dot-yellow"></span>
+            <span class="term-dot dot-green"></span>
+            <span class="term-title">Qodea Terminal</span>
+          </div>
+          <div class="terminal-body">
+            <div class="term-line"><span class="term-prompt">$</span> qodea "Javítsd ki a TypeScript hibákat"</div>
+            <div class="term-line term-dim">🔍 src/ keresése... kész</div>
+            <div class="term-line term-dim">📄 12 fájl ellenőrizve, 3 hiba találva</div>
+            <div class="term-line term-dim">🛠️ Javítások alkalmazása: app.ts, utils.ts, types.ts</div>
+            <div class="term-line term-success">✅ Minden TypeScript hiba kijavítva!</div>
+            <div class="term-line"><span class="term-prompt">$</span> <span class="term-cursor">█</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA / Contact -->
+  <section class="cta" id="contact">
+    <div class="cta-card">
+      <h2>Készen állsz a következő szintre?</h2>
+      <p>Csatlakozz több mint 120 000 fejlesztőhöz, akik már most is gyorsabban és okosabban dolgoznak a Qodea segítségével.</p>
+      <div class="cta-actions">
+        <button class="btn btn-primary btn-lg">Kezdj neki ingyen</button>
+        <button class="btn btn-outline btn-lg">Kapcsolatfelvétel</button>
+      </div>
+      <p class="cta-note">Nincs szükség bankkártyára. 14 napos ingyenes próbaidőszak.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <span class="logo-icon">◇</span>
+        <span class="logo-text">Qodea</span>
+        <p>Az intelligens kódolás jövője.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Termék</h4>
+        <a href="#">Funkciók</a>
+        <a href="#">Árazás</a>
+        <a href="#">Dokumentáció</a>
+        <a href="#">API</a>
+      </div>
+      <div class="footer-col">
+        <h4>Cég</h4>
+        <a href="#">Rólunk</a>
+        <a href="#">Blog</a>
+        <a href="#">Karrier</a>
+        <a href="#">Sajtó</a>
+      </div>
+      <div class="footer-col">
+        <h4>Közösség</h4>
+        <a href="#">GitHub</a>
+        <a href="#">Discord</a>
+        <a href="#">Twitter</a>
+        <a href="#">YouTube</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 Qodea. Minden jog fenntartva. <span class="footer-heart">♥</span> Budapest, Magyarország</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

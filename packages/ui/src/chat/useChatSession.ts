@@ -20,10 +20,16 @@ export interface ChatItem {
 let idCounter = 0;
 const nextId = () => `i${++idCounter}`;
 
-const DEFAULT_MODES: Array<{ value: PermissionMode; label: string; hint: string }> = [
-  { value: 'read-only', label: 'Read-only', hint: 'csak olvashat és tervezhet' },
+export const MODES: Array<{ value: PermissionMode; label: string; hint: string }> = [
+  { value: 'read-only', label: 'Read', hint: 'csak olvashat és tervezhet' },
   { value: 'default', label: 'Ask', hint: 'írás előtt kérdez' },
   { value: 'yolo', label: 'YOLO', hint: 'full-auto, nem kérdez' },
+];
+
+export const EFFORTS: Array<{ value: 'low' | 'medium' | 'high'; label: string }> = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Med' },
+  { value: 'high', label: 'High' },
 ];
 
 export function useChatSession() {
@@ -32,10 +38,12 @@ export function useChatSession() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [history, setHistory] = useState<TurnMessage[]>([]);
   const [flash, setFlash] = useState<BotMood | null>(null);
+  const [tokensUsed, setTokensUsed] = useState(0);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [providerId, setProviderId] = useState<string>('');
   const [model, setModel] = useState<string>('');
   const [mode, setMode] = useState<PermissionMode>('default');
+  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium');
   const [cwd, setCwd] = useState<string>('');
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
@@ -63,6 +71,13 @@ export function useChatSession() {
       }
       return prev;
     });
+  }, []);
+
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashMood = useCallback((mood: BotMood, ms = 1600) => {
+    setFlash(mood);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(null), ms);
   }, []);
 
   useEffect(() => {
@@ -112,6 +127,10 @@ export function useChatSession() {
           ]);
           break;
         }
+        case 'usage': {
+          setTokensUsed((ev.inputTokens ?? 0) + (ev.outputTokens ?? 0));
+          break;
+        }
         case 'session-done': {
           setHistory(ev.messages as TurnMessage[]);
           setStatus('idle');
@@ -132,13 +151,6 @@ export function useChatSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patchLastToolByName]);
 
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flashMood = useCallback((mood: BotMood, ms = 1600) => {
-    setFlash(mood);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlash(null), ms);
-  }, []);
-
   const send = useCallback(
     async (task: string) => {
       const trimmed = task.trim();
@@ -154,6 +166,7 @@ export function useChatSession() {
           providerId: providerId || undefined,
           model: model.trim() || undefined,
           mode,
+          reasoningEffort: effort,
           cwd: cwd.trim(),
           history: history.length > 0 ? history : undefined,
         };
@@ -164,7 +177,7 @@ export function useChatSession() {
         setStatus('idle');
       }
     },
-    [status, providerId, model, mode, cwd, history],
+    [status, providerId, model, mode, effort, cwd, history],
   );
 
   const stop = useCallback(async () => {
@@ -210,6 +223,8 @@ export function useChatSession() {
     status,
     mood,
     color,
+    tokensUsed,
+    contextWindow: selectedProvider?.contextWindow ?? 131072,
     providers,
     selectedProvider,
     providerId,
@@ -218,12 +233,13 @@ export function useChatSession() {
     setModel,
     mode,
     setMode,
+    effort,
+    setEffort,
     cwd,
     setCwd,
     errorBanner,
     send,
     stop,
     respond,
-    DEFAULT_MODES,
   };
 }

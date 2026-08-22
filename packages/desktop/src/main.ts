@@ -58,6 +58,7 @@ async function listProviders() {
       baseUrl: e.baseUrl ?? null,
       defaultModel: e.defaultModel ?? null,
       azureDeployment: e.azure?.deployment ?? null,
+      contextWindow: e.contextWindow ?? 131072,
     })),
   };
 }
@@ -68,6 +69,7 @@ interface StartRequest {
   model?: string;
   mode: PermissionMode;
   cwd: string;
+  reasoningEffort?: 'low' | 'medium' | 'high';
   history?: TurnMessage[];
 }
 
@@ -123,6 +125,7 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         signal: abort.signal,
       };
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
+      if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
 
       const iterator = runAgent(options);
 
