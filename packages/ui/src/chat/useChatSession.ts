@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BotColor, BotMood } from '../mascot/QodeaBot';
-import type { ProviderInfo, StartRequest, WireEvent } from '../ipc.d';
+import type {
+  ProviderInfo,
+  StartRequest,
+  WireEvent,
+  SessionSummary,
+  StoredSession,
+} from '../ipc.d';
 import type { PermissionMode, TurnMessage } from '@qodea/core';
 
 export interface ChatItem {
@@ -39,6 +45,8 @@ export function useChatSession() {
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [history, setHistory] = useState<TurnMessage[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [flash, setFlash] = useState<BotMood | null>(null);
   const [tokensUsed, setTokensUsed] = useState(0);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -52,7 +60,12 @@ export function useChatSession() {
   const itemsRef = useRef<ChatItem[]>([]);
   itemsRef.current = items;
 
+  const reloadSessions = useCallback(async () => {
+    setSessions(await window.qodea.sessionsList());
+  }, []);
+
   useEffect(() => {
+    void reloadSessions();
     void window.qodea.listProviders().then((res) => {
       setProviders(res.providers);
       if (res.defaultProvider) setProviderId(res.defaultProvider);
@@ -160,6 +173,7 @@ export function useChatSession() {
         case 'session-done': {
           setHistory(ev.messages as TurnMessage[]);
           setStatus('idle');
+          void reloadSessions();
           flashMood(ev.reason === 'complete' ? 'success' : 'error', 2600);
           break;
         }
@@ -189,6 +203,7 @@ export function useChatSession() {
       try {
         const req: StartRequest = {
           task: trimmed,
+          ...(activeSessionId ? { sessionId: activeSessionId } : {}),
           providerId: providerId || undefined,
           model: model.trim() || undefined,
           mode,
@@ -198,13 +213,78 @@ export function useChatSession() {
         };
         const res = await window.qodea.startSession(req);
         setSessionId(res.sessionId);
+        setActiveSessionId(res.sessionId);
       } catch (err) {
         setErrorBanner(err instanceof Error ? err.message : String(err));
         setStatus('idle');
       }
     },
-    [status, providerId, model, mode, effort, cwd, history],
+    [status, providerId, model, mode, effort, cwd, history, activeSessionId],
   );
+
+  /** Opens a stored session back into the view and continues it. */
+  const openSession = useCallback(async (id: string) => {
+    if (status === 'running') return;
+    const full: StoredSession | null = await window.qodea.sessionGet(id);
+    if (!full) return;
+
+    const restored: ChatItem[] = [];
+    let n = 0;
+    const nextIdLocal = () => `r${++n}`;
+
+    for (const m of full.messages as unknown as TurnMessage[]) {
+      if (m.role === 'system') continue;
+      if (m.role === 'user') {
+        restored.push({ kind: 'user', id: nextIdLocal(), text: m.content });
+      } else if (m.role === 'assistant') {
+        for (const tc of m.toolCalls ?? []) {
+          restored.push({
+            kind: 'tool',
+            id: nextIdLocal(),
+            name: tc.name,
+            summary: tc.argumentsJson,
+            content: '',
+            running: false,
+          });
+        }
+        if (m.content) {
+          restored.push({ kind: 'assistant', id: nextIdLocal(), text: m.content });
+        }
+      } else if (m.role === 'tool_result') {
+        const tool = [...restored].reverse().find(
+          (it) => it.kind === 'tool' && it.name === m.name && it.content === '',
+        );
+        if (tool) {
+          tool.content = m.content;
+          tool.isError = m.isError ?? false;
+        }
+      }
+    }
+
+    setItems(restored);
+    setHistory(full.messages as TurnMessage[]);
+    setActiveSessionId(id);
+    setSessionId(id);
+    setStatus('idle');
+    setTokensUsed(0);
+    setErrorBanner(null);
+  }, [status]);
+
+  const newChat = useCallback(() => {
+    if (status === 'running') return;
+    setItems([]);
+    setHistory([]);
+    setActiveSessionId(null);
+    setSessionId(null);
+    setTokensUsed(0);
+    setErrorBanner(null);
+  }, [status]);
+
+  const removeSession = useCallback(async (id: string) => {
+    await window.qodea.sessionDelete(id);
+    await reloadSessions();
+    if (id === activeSessionId) newChat();
+  }, [activeSessionId, newChat, reloadSessions]);
 
   const stop = useCallback(async () => {
     if (sessionId) await window.qodea.stopSession(sessionId);
@@ -268,5 +348,10 @@ export function useChatSession() {
     stop,
     respond,
     reloadProviders,
+    sessions,
+    activeSessionId,
+    openSession,
+    newChat,
+    removeSession,
   };
 }

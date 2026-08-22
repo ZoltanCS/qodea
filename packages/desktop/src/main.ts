@@ -18,6 +18,13 @@ import {
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import { qodeaDir } from '@qodea/core';
+import {
+  appendMessages,
+  deleteSession,
+  getSession,
+  listSessions,
+  touchSession,
+} from './store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
@@ -97,6 +104,7 @@ async function listProviders() {
 }
 
 interface StartRequest {
+  sessionId?: string;
   task: string;
   providerId?: string;
   model?: string;
@@ -139,7 +147,13 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
   if (!entry) throw new Error('no provider configured');
 
   const provider = createProvider(entry);
-  const sessionId = `s${++sessionCounter}`;
+  const storeId = await touchSession({
+    ...(req.sessionId ? { id: req.sessionId } : {}),
+    task: req.task,
+    ...(req.cwd ? { cwd: req.cwd } : {}),
+    providerId: entry.id,
+  });
+  const sessionId = storeId;
   const abort = new AbortController();
   const pendingAsks = new Map<string, (approved: boolean) => void>();
   sessions.set(sessionId, { abort, pendingAsks });
@@ -195,6 +209,7 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
             todos: value.state.todos,
             messages: value.messages,
           });
+          await appendMessages(sessionId, value.messages);
           break;
         }
         send(value);
@@ -319,6 +334,23 @@ function registerIpc(win: () => BrowserWindow): void {
       return { models: await fetchAvailableModels(entry) };
     },
   );
+
+  // ── sessions: sidebar tree data ──────────────────────────────────────────
+  ipcMain.handle('qodea:sessions:list', async () => {
+    const all = await listSessions();
+    return all
+      .sort((a: { updatedAt: number }, b: { updatedAt: number }) => b.updatedAt - a.updatedAt)
+      .map((s) => ({
+        id: s.id,
+        title: s.title,
+        cwd: s.cwd,
+        updatedAt: s.updatedAt,
+      }));
+  });
+
+  ipcMain.handle('qodea:sessions:get', (_e, id: string) => getSession(id));
+
+  ipcMain.handle('qodea:sessions:delete', (_e, id: string) => deleteSession(id));
 
   ipcMain.handle(
     'qodea:start',

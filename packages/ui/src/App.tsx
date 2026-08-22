@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
 import { Settings } from './settings/Settings';
+import { Sidebar } from './sidebar/Sidebar';
 
 type Theme = 'dark' | 'light';
 
@@ -46,67 +47,60 @@ export function App() {
   const running = chat.status === 'running';
 
   return (
-    <div className="app">
-      {/* minimal top bar */}
-      <header className="bar">
-        <div className="brand">
-          <QodeaBot mood={chat.mood} color={chat.color} size={30} />
-          <span className="brand-name">Qodea</span>
-        </div>
+    <div className="shell">
+      <Sidebar
+        sessions={chat.sessions}
+        activeSessionId={chat.activeSessionId}
+        onOpen={(id) => void chat.openSession(id)}
+        onDelete={(id) => void chat.removeSession(id)}
+        onNewChat={chat.newChat}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        settingsOpen={showSettings}
+        onCloseSettings={() => {
+          setShowSettings(false);
+          void chat.reloadProviders();
+        }}
+      />
 
-        <div className="bar-right">
-          <input
-            className="ghost-input cwd"
-            placeholder="project folder…"
-            value={chat.cwd}
-            onChange={(e) => chat.setCwd(e.target.value)}
-            spellCheck={false}
-          />
-          <button
-            className="theme-toggle"
-            title={theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? '☀' : '☾'}
-          </button>
-          <button
-            className="theme-toggle"
-            title="Beállítások"
-            onClick={() => setShowSettings(true)}
-          >
-            ⚙
-          </button>
-          <select
-            className="ghost-select"
-            value={chat.providerId}
-            onChange={(e) => {
-              chat.setProviderId(e.target.value);
-              const p = chat.providers.find((x) => x.id === e.target.value);
-              chat.setModel(p?.defaultModel ?? '');
-            }}
-          >
-            {chat.providers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
+      <div className="main">
+        {/* minimal top bar */}
+        <header className="bar">
+          <div className="brand">
+            <QodeaBot mood={chat.mood} color={chat.color} size={26} />
+            <span className="brand-name">Qodea</span>
+          </div>
 
-      {chat.errorBanner && <div className="banner">{chat.errorBanner}</div>}
+          <div className="bar-right">
+            <input
+              className="ghost-input cwd"
+              placeholder="project folder…"
+              value={chat.cwd}
+              onChange={(e) => chat.setCwd(e.target.value)}
+              spellCheck={false}
+            />
+            <select
+              className="ghost-select"
+              value={chat.providerId}
+              onChange={(e) => {
+                chat.setProviderId(e.target.value);
+                const p = chat.providers.find((x) => x.id === e.target.value);
+                chat.setModel(p?.defaultModel ?? '');
+              }}
+            >
+              {chat.providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </header>
 
-      {showSettings ? (
-        <Settings
-          onClose={() => {
-            setShowSettings(false);
-            void chat.reloadProviders();
-          }}
-        />
-      ) : (
-        <>
-          {/* stream */}
-          <div ref={streamRef} className="stream">
+        {chat.errorBanner && <div className="banner">{chat.errorBanner}</div>}
+
+        {/* stream */}
+        <div ref={streamRef} className="stream">
             <div className="col">
               {chat.items.length === 0 && (
                 <div className="hero">
@@ -171,8 +165,7 @@ export function App() {
           </div>
         </div>
       </footer>
-        </>
-      )}
+      </div>
     </div>
   );
 }

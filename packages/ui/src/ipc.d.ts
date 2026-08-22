@@ -11,6 +11,7 @@ export interface ProviderInfo {
 }
 
 export interface StartRequest {
+  sessionId?: string;
   task: string;
   providerId?: string;
   model?: string;
@@ -49,6 +50,17 @@ export interface SaveDraft {
   clearStoredKey?: boolean;
 }
 
+export interface SessionSummary {
+  id: string;
+  title: string;
+  cwd: string | null;
+  updatedAt: number;
+}
+
+export interface StoredSession extends SessionSummary {
+  messages: Array<Record<string, unknown>>;
+}
+
 export type WireEvent =
   | AgentEvent
   | { type: 'permission-request'; requestId: string; tool: string; summary: string }
@@ -64,6 +76,9 @@ declare global {
         defaultProvider: string | null;
         providers: ProviderInfo[];
       }>;
+      sessionsList(): Promise<SessionSummary[]>;
+      sessionGet(id: string): Promise<StoredSession | null>;
+      sessionDelete(id: string): Promise<void>;
       getConfig(): Promise<{
         defaultProvider: string | null;
         providers: ProviderDraft[];

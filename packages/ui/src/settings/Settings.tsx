@@ -68,7 +68,7 @@ function blankDraft(): Draft {
   };
 }
 
-export function Settings({ onClose }: { onClose: () => void }) {
+export function Settings({ onClose, compact = false }: { onClose: () => void; compact?: boolean }) {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [models, setModels] = useState<string[] | null>(null);
@@ -174,7 +174,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
   if (!active) return null;
 
   return (
-    <div className="settings">
+    <div className={`settings${compact ? ' compact' : ''}`}>
       <header className="set-head">
         <h2>Beállítások</h2>
         <button className="icon-btn" onClick={onClose} title="Bezárás">
@@ -182,9 +182,30 @@ export function Settings({ onClose }: { onClose: () => void }) {
         </button>
       </header>
 
-      <div className="set-body">
+      <div className={`set-body${compact ? ' as-col' : ''}`}>
         {/* provider list */}
-        <aside className="set-list">
+        {compact ? (
+          <div className="field" style={{ margin: '0 14px' }}>
+            <span className="f-label">Szolgáltató</span>
+            <select
+              value={activeIdx}
+              onChange={(e) => {
+                setActiveIdx(Number(e.target.value));
+                setModels(null);
+              }}
+            >
+              {drafts.map((d, i) => (
+                <option key={`${d.id}-${i}`} value={i}>
+                  {d.label || d.id || '(új)'}
+                </option>
+              ))}
+              <option value={drafts.length} disabled>
+                + Új hozzáadása (nagy képernyőn)
+              </option>
+            </select>
+          </div>
+        ) : (
+          <aside className="set-list">
           {drafts.map((d, i) => (
             <button
               key={`${d.id}-${i}`}
@@ -201,7 +222,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
           <button className="set-add" onClick={addProvider}>
             + Új szolgáltató
           </button>
-        </aside>
+          </aside>
+        )}
 
         {/* editor */}
         <section className="set-form">

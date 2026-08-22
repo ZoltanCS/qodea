@@ -4,6 +4,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('qodea', {
   listProviders: () => ipcRenderer.invoke('qodea:providers'),
 
+  sessionsList: () => ipcRenderer.invoke('qodea:sessions:list'),
+  sessionGet: (id) => ipcRenderer.invoke('qodea:sessions:get', id),
+  sessionDelete: (id) => ipcRenderer.invoke('qodea:sessions:delete', id),
+
   getConfig: () => ipcRenderer.invoke('qodea:getConfig'),
   saveConfig: (payload) => ipcRenderer.invoke('qodea:saveConfig', payload),
   listModels: (req) => ipcRenderer.invoke('qodea:listModels', req),
