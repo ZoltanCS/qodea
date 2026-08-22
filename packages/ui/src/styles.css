@@ -1,0 +1,55 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0a0a0c;
+  color: #e8e6e1;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.boot {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.wordmark {
+  margin: 8px 0 0;
+  font-size: 34px;
+  letter-spacing: 0.06em;
+  font-weight: 650;
+}
+
+.status {
+  margin: 0;
+  color: #8a8880;
+  font-size: 13px;
+}
+
+.mascot-idle .breathe {
+  transform-origin: 100px 98px;
+  animation: breathe 4.2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02);
+  }
+}

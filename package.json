@@ -1,0 +1,23 @@
+{
+  "name": "qodea",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Qodea — an open-source agentic coder app: multi-agent, skills, browser use, planning.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "smoke": "turbo run smoke",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.11",
+    "typescript": "^7.0.2"
+  }
+}
