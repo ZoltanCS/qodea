@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
 import { Sidebar } from './sidebar/Sidebar';
+import { Settings } from './settings/Settings';
 import { AvatarEditor } from './avatar/AvatarEditor';
 import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
 
@@ -248,6 +249,25 @@ export function App() {
           </>
         )}
       </div>
+
+      {showSettings && (
+        <div
+          className="modal-back"
+          onClick={() => {
+            setShowSettings(false);
+            void chat.reloadProviders();
+          }}
+        >
+          <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
+            <Settings
+              onClose={() => {
+                setShowSettings(false);
+                void chat.reloadProviders();
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {showProfile && (
         <div className="modal-back" onClick={() => setShowProfile(false)}>

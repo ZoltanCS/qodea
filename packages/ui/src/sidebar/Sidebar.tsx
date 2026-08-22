@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { SessionSummary, ProjectInfo } from '../ipc.d';
 import { Avatar } from '../avatar/Avatar';
 import type { AvatarCfg } from '../avatar/avatarConfig';
-import { Settings } from '../settings/Settings';
 
 interface SidebarProps {
   sessions: SessionSummary[];
@@ -39,13 +38,7 @@ export function Sidebar(props: SidebarProps) {
         </button>
       </div>
 
-      {props.settingsOpen ? (
-        <div className="side-settings">
-          <Settings compact onClose={props.onCloseSettings} />
-        </div>
-      ) : (
-        <SessionTree {...props} />
-      )}
+      <SessionTree {...props} />
 
       <div className="side-bottom">
         <button
