@@ -1,0 +1,261 @@
+/* QodeaBot — mood animations. Subtle by design; easter-egg layers come later. */
+
+.qb {
+  display: block;
+  overflow: visible;
+}
+
+.qb-body,
+.qb-eyes,
+.qb-orbit,
+.qb-focus {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* calm idle — breathing */
+.qb-idle {
+  animation: qb-breathe 4.2s ease-in-out infinite;
+}
+
+/* thinking — gentle bob with a tiny tilt */
+.qb-thinking {
+  animation: qb-think 2.6s ease-in-out infinite alternate;
+}
+
+/* working / error — effort shake */
+.qb-working {
+  animation: qb-shake 0.42s linear infinite;
+}
+
+.qb-error {
+  animation: qb-shake-hard 0.24s linear infinite;
+}
+
+/* waiting — slow sway, like tapping a foot */
+.qb-waiting {
+  animation: qb-sway 3.4s ease-in-out infinite;
+}
+
+/* success — happy hop */
+.qb-success {
+  animation: qb-hop 1.6s ease-in-out infinite;
+}
+
+/* blink for any eyes */
+.qb-eyes {
+  animation: qb-blink 5.2s ease-in-out infinite;
+}
+
+/* thinking — eyes wander a small circle while pondering */
+.qb-orbit {
+  animation: qb-orbit 3.2s ease-in-out infinite;
+}
+
+/* working — nervous micro-jitter under the straight brows */
+.qb-focus {
+  animation: qb-focus-jitter 0.38s ease-in-out infinite alternate;
+}
+
+/* working — sweat droplets fly off, staggered */
+.qb-drop {
+  transform-box: fill-box;
+  opacity: 0;
+  animation: qb-fly-right 1.15s ease-out infinite;
+}
+.qb-drop-a {
+  animation-delay: 0s;
+}
+.qb-drop-b {
+  animation-name: qb-fly-left;
+  animation-delay: 0.45s;
+}
+.qb-drop-c {
+  animation-name: qb-fly-up;
+  animation-delay: 0.8s;
+  animation-duration: 0.95s;
+}
+
+/* thinking — floating question mark */
+.qb-qmark {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  fill: #8f8b7e;
+  animation: qb-qfloat 2.3s ease-in-out infinite alternate;
+}
+
+/* ── keyframes ─────────────────────────────────────────────────────────── */
+
+@keyframes qb-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02);
+  }
+}
+
+@keyframes qb-think {
+  from {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+  to {
+    transform: translateY(2px) rotate(2deg);
+  }
+}
+
+@keyframes qb-shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-1.5px, 1px) rotate(-1.4deg);
+  }
+  50% {
+    transform: translate(1.5px, -1px) rotate(1deg);
+  }
+  75% {
+    transform: translate(-1px, -1.5px) rotate(-0.8deg);
+  }
+}
+
+@keyframes qb-shake-hard {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-2.5px, 1.5px) rotate(-2.4deg);
+  }
+  50% {
+    transform: translate(2.5px, -1.5px) rotate(2deg);
+  }
+  75% {
+    transform: translate(-1.5px, -2.5px) rotate(-1.6deg);
+  }
+}
+
+@keyframes qb-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes qb-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  70% {
+    transform: translateY(-12px) scaleY(1.04);
+  }
+  85% {
+    transform: translateY(0) scaleY(0.96);
+  }
+}
+
+@keyframes qb-blink {
+  0%,
+  91%,
+  100% {
+    transform: scaleY(1);
+  }
+  93.5% {
+    transform: scaleY(0.08);
+  }
+  96% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes qb-orbit {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(2.8px, -1.8px);
+  }
+  50% {
+    transform: translate(0, -3.2px);
+  }
+  75% {
+    transform: translate(-2.8px, -1.8px);
+  }
+}
+
+@keyframes qb-focus-jitter {
+  from {
+    transform: translate(-0.9px, 0.3px);
+  }
+  to {
+    transform: translate(0.9px, -0.3px);
+  }
+}
+
+@keyframes qb-fly-right {
+  0% {
+    opacity: 0;
+    transform: translate(166px, 58px) scale(0.5);
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(182px, 28px) scale(1);
+  }
+}
+
+@keyframes qb-fly-left {
+  0% {
+    opacity: 0;
+    transform: translate(34px, 70px) scale(0.5);
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(20px, 40px) scale(1);
+  }
+}
+
+@keyframes qb-fly-up {
+  0% {
+    opacity: 0;
+    transform: translate(148px, 30px) scale(0.5);
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(154px, 4px) scale(1);
+  }
+}
+
+@keyframes qb-qfloat {
+  from {
+    opacity: 0.35;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 0.95;
+    transform: translateY(-5px);
+  }
+}
+
+/* accessibility — still frames for users who opt out of motion */
+@media (prefers-reduced-motion: reduce) {
+  .qb *,
+  .qb {
+    animation: none !important;
+  }
+}

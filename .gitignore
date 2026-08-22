@@ -10,6 +10,9 @@ coverage/
 .env.local
 .env.*.local
 
+# local-only brand references (third-party assets — never publish)
+branding/reference/
+
 # OS noise
 .DS_Store
 Thumbs.db

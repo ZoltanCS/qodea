@@ -1,29 +1,28 @@
+import { QodeaBot, type BotColor, type BotMood } from './mascot/QodeaBot';
+import './mascot/mascot.css';
+
+const SHOWCASE: Array<{ mood: BotMood; color: BotColor; label: string }> = [
+  { mood: 'working', color: 'red', label: 'working' },
+  { mood: 'thinking', color: 'cream', label: 'thinking' },
+  { mood: 'waiting', color: 'blue', label: 'waiting' },
+  { mood: 'error', color: 'red', label: 'error' },
+  { mood: 'success', color: 'cream', label: 'success' },
+];
+
 export function App() {
   return (
     <main className="boot">
-      <MascotIdle />
+      <QodeaBot mood="idle" color="cream" size={150} />
       <h1 className="wordmark">Qodea</h1>
-      <p className="status">M0 · scaffold online — agent core coming in M1</p>
+      <p className="status">M0 · scaffold online — the bot already has moods; the brain arrives in M1</p>
+      <div className="mascot-row">
+        {SHOWCASE.map(({ mood, color, label }) => (
+          <figure key={label} className="mascot-cell">
+            <QodeaBot mood={mood} color={color} size={64} />
+            <figcaption>{label}</figcaption>
+          </figure>
+        ))}
+      </div>
     </main>
-  );
-}
-
-/** Placeholder for the real mascot system (M2): idle white form, gently breathing. */
-function MascotIdle() {
-  return (
-    <svg className="mascot-idle" viewBox="0 0 200 200" width="140" height="140" aria-hidden>
-      <defs>
-        <radialGradient id="ballGrad" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#d8d6cf" />
-        </radialGradient>
-      </defs>
-      <g className="breathe">
-        <circle cx="100" cy="104" r="78" fill="#050505" opacity="0.55" />
-        <circle cx="100" cy="98" r="78" fill="url(#ballGrad)" />
-        <ellipse cx="82" cy="96" rx="9" ry="16" fill="#17171a" />
-        <ellipse cx="122" cy="96" rx="9" ry="16" fill="#17171a" />
-      </g>
-    </svg>
   );
 }

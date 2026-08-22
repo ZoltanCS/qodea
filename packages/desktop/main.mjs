@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
 const uiDevUrl = 'http://localhost:5173';
 
-function createWindow() {
+async function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -23,14 +23,28 @@ function createWindow() {
   });
 
   if (isDev) {
-    win.loadURL(uiDevUrl);
-    win.webContents.on('did-fail-load', () => {
-      console.error(`[qodea] could not reach UI dev server at ${uiDevUrl}`);
-      console.error('[qodea] start it with: pnpm --filter @qodea/ui dev');
-    });
+    await loadWithRetry(win);
   } else {
     win.loadFile(path.join(__dirname, '../ui/dist/index.html'));
   }
+}
+
+/** Keeps retrying while the Vite dev server warms up, so start order never matters. */
+async function loadWithRetry(win) {
+  const maxAttempts = 90;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (win.isDestroyed()) return;
+    try {
+      await win.loadURL(uiDevUrl);
+      return;
+    } catch {
+      if (attempt === 1) {
+        console.log(`[qodea] waiting for UI dev server at ${uiDevUrl} ...`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    }
+  }
+  console.error(`[qodea] gave up waiting for the UI dev server at ${uiDevUrl}`);
 }
 
 app.whenReady().then(() => {

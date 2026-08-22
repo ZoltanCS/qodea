@@ -27,7 +27,7 @@ body {
 }
 
 .wordmark {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: 34px;
   letter-spacing: 0.06em;
   font-weight: 650;
@@ -39,17 +39,23 @@ body {
   font-size: 13px;
 }
 
-.mascot-idle .breathe {
-  transform-origin: 100px 98px;
-  animation: breathe 4.2s ease-in-out infinite;
+.mascot-row {
+  display: flex;
+  gap: 28px;
+  margin-top: 26px;
 }
 
-@keyframes breathe {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-5px) scale(1.02);
-  }
+.mascot-cell {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mascot-cell figcaption {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6d6b64;
 }
