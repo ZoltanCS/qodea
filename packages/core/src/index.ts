@@ -36,6 +36,7 @@ export { createProvider } from './providers/factory.js';
 export { OpenAICompatProvider } from './providers/openai-compat.js';
 export { AzureProvider } from './providers/azure.js';
 export { AnthropicProvider, toWireMessages as anthropicToWireMessages } from './providers/anthropic.js';
+export { fetchAvailableModels } from './providers/models.js';
 
 // ── tools ────────────────────────────────────────────────────────────────────
 export { createDefaultTools, toSpec } from './tools/registry.js';

@@ -61,6 +61,17 @@ export function useChatSession() {
     setCwd('');
   }, []);
 
+  const reloadProviders = useCallback(async () => {
+    const res = await window.qodea.listProviders();
+    setProviders(res.providers);
+    if (res.providers.length > 0 && !res.providers.some((p) => p.id === providerId)) {
+      if (res.defaultProvider) setProviderId(res.defaultProvider);
+      else setProviderId(res.providers[0]!.id);
+      const sel = res.providers.find((p) => p.id === (res.defaultProvider ?? res.providers[0]!.id));
+      setModel(sel?.defaultModel ?? '');
+    }
+  }, [providerId]);
+
   const patchLastToolByName = useCallback((name: string, patch: Partial<ChatItem>) => {
     setItems((prev) => {
       for (let i = prev.length - 1; i >= 0; i--) {
@@ -256,5 +267,6 @@ export function useChatSession() {
     send,
     stop,
     respond,
+    reloadProviders,
   };
 }

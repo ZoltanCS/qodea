@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
+import { Settings } from './settings/Settings';
 
 type Theme = 'dark' | 'light';
 
@@ -15,6 +16,7 @@ export function App() {
   const chat = useChatSession();
   const [draft, setDraft] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [showSettings, setShowSettings] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,6 +69,13 @@ export function App() {
           >
             {theme === 'dark' ? '☀' : '☾'}
           </button>
+          <button
+            className="theme-toggle"
+            title="Beállítások"
+            onClick={() => setShowSettings(true)}
+          >
+            ⚙
+          </button>
           <select
             className="ghost-select"
             value={chat.providerId}
@@ -87,24 +96,33 @@ export function App() {
 
       {chat.errorBanner && <div className="banner">{chat.errorBanner}</div>}
 
-      {/* stream */}
-      <div ref={streamRef} className="stream">
-        <div className="col">
-          {chat.items.length === 0 && (
-            <div className="hero">
-              <QodeaBot mood="idle" color="cream" size={92} />
-              <h1>Miben segítünk?</h1>
-              <p>Adj meg egy feladatot — Qodea olvas, ír, futtat, amíg kész nem lesz.</p>
+      {showSettings ? (
+        <Settings
+          onClose={() => {
+            setShowSettings(false);
+            void chat.reloadProviders();
+          }}
+        />
+      ) : (
+        <>
+          {/* stream */}
+          <div ref={streamRef} className="stream">
+            <div className="col">
+              {chat.items.length === 0 && (
+                <div className="hero">
+                  <QodeaBot mood="idle" color="cream" size={92} />
+                  <h1>Miben segítünk?</h1>
+                  <p>Adj meg egy feladatot — Qodea olvas, ír, futtat, amíg kész nem lesz.</p>
+                </div>
+              )}
+              {chat.items.map((item) => (
+                <Row key={item.id} item={item} onRespond={(id, ok) => void chat.respond(id, ok)} />
+              ))}
             </div>
-          )}
-          {chat.items.map((item) => (
-            <Row key={item.id} item={item} onRespond={(id, ok) => void chat.respond(id, ok)} />
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* composer */}
-      <footer className="dock">
+          {/* composer */}
+          <footer className="dock">
         <div className="composer">
           <textarea
             value={draft}
@@ -153,6 +171,8 @@ export function App() {
           </div>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 }

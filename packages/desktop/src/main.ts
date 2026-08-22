@@ -3,15 +3,21 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   createProvider,
+  fetchAvailableModels,
   getEffectiveProviders,
   loadConfig,
   PROVIDER_PRESETS,
   runAgent,
+  configSchema,
   type AgentEvent,
   type AgentRunOptions,
   type PermissionMode,
+  type ProviderEntry,
   type TurnMessage,
 } from '@qodea/core';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import { qodeaDir } from '@qodea/core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
@@ -71,6 +77,29 @@ interface StartRequest {
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
   history?: TurnMessage[];
+}
+
+interface SaveDraft {
+  id: string;
+  kind: string;
+  label?: string | null;
+  baseUrl?: string | null;
+  apiKeyEnv?: string | null;
+  defaultModel?: string | null;
+  contextWindow?: number | null;
+  azureEndpoint?: string | null;
+  azureApiVersion?: string | null;
+  azureDeployment?: string | null;
+  newApiKey?: string;
+  clearStoredKey?: boolean;
+}
+
+interface ListModelsRequest {
+  id?: string;
+  kind: string;
+  baseUrl?: string;
+  azureEndpoint?: string;
+  newApiKey?: string;
 }
 
 async function startSession(win: BrowserWindow, req: StartRequest) {
@@ -158,6 +187,111 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
 
 function registerIpc(win: () => BrowserWindow): void {
   ipcMain.handle('qodea:providers', () => listProviders());
+
+  // ── settings: read editable drafts (secrets masked) ──────────────────────
+  ipcMain.handle('qodea:getConfig', async () => {
+    const config = await loadConfig();
+    const entries = getEffectiveProviders(config);
+    return {
+      defaultProvider: config.defaultProvider ?? entries[0]?.id ?? null,
+      providers: entries.map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        label: e.label ?? null,
+        baseUrl: e.baseUrl ?? null,
+        apiKeyEnv: e.apiKeyEnv ?? null,
+        defaultModel: e.defaultModel ?? null,
+        contextWindow: e.contextWindow ?? null,
+        azureEndpoint: e.azure?.endpoint ?? null,
+        azureApiVersion: e.azure?.apiVersion ?? null,
+        azureDeployment: e.azure?.deployment ?? null,
+        hasStoredKey: Boolean(e.apiKey),
+      })),
+    };
+  });
+
+  // ── settings: write back (preserving stored keys unless replaced/cleared) ─
+  ipcMain.handle(
+    'qodea:saveConfig',
+    async (_event, payload: { defaultProvider: string | null; providers: SaveDraft[] }) => {
+      const prev = await loadConfig();
+      const prevById = new Map(prev.providers.map((p) => [p.id, p]));
+
+      const providers: ProviderEntry[] = payload.providers.map((d) => {
+        const old = prevById.get(d.id);
+
+        let apiKey: string | undefined;
+        if (typeof d.newApiKey === 'string' && d.newApiKey.length > 0) {
+          apiKey = d.newApiKey;
+        } else if (!d.clearStoredKey && old?.apiKey) {
+          apiKey = old.apiKey; // keep the stored secret without echoing it around
+        }
+
+        const entry: ProviderEntry = {
+          id: d.id,
+          kind: d.kind as ProviderEntry['kind'],
+          ...(d.label ? { label: d.label } : {}),
+          ...(d.baseUrl ? { baseUrl: d.baseUrl } : {}),
+          ...(apiKey ? { apiKey } : {}),
+          ...(d.apiKeyEnv ? { apiKeyEnv: d.apiKeyEnv } : {}),
+          ...(d.defaultModel ? { defaultModel: d.defaultModel } : {}),
+          ...(d.contextWindow ? { contextWindow: d.contextWindow } : {}),
+          ...(d.azureEndpoint
+            ? {
+                azure: {
+                  endpoint: d.azureEndpoint,
+                  apiVersion: d.azureApiVersion || '2024-10-21',
+                  ...(d.azureDeployment ? { deployment: d.azureDeployment } : {}),
+                },
+              }
+            : {}),
+        };
+        return entry;
+      });
+
+      const validated = configSchema.parse({
+        version: 1,
+        defaultProvider: payload.defaultProvider ?? undefined,
+        providers,
+      });
+
+      const file = `${qodeaDir()}/config.json`;
+      await fs.mkdir(qodeaDir(), { recursive: true });
+      await fs.writeFile(file, JSON.stringify(validated, null, 2) + '\n', 'utf8');
+      return { savedTo: file.replace(os.homedir(), '~') };
+    },
+  );
+
+  // ── settings: list models from an endpoint ───────────────────────────────
+  ipcMain.handle(
+    'qodea:listModels',
+    async (_event, req: ListModelsRequest) => {
+      const prev = await loadConfig();
+      const saved = prev.providers.find((p) => p.id === req.id);
+
+      let entry: ProviderEntry = {
+        id: req.id ?? 'probe',
+        kind: req.kind as ProviderEntry['kind'],
+        ...(req.baseUrl ? { baseUrl: req.baseUrl } : {}),
+        ...(req.azureEndpoint
+          ? {
+              azure: {
+                endpoint: req.azureEndpoint,
+                apiVersion: '2024-10-21',
+              },
+            }
+          : {}),
+      };
+
+      if (req.newApiKey && req.newApiKey.length > 0) {
+        entry = { ...entry, apiKey: req.newApiKey };
+      } else if (saved?.apiKey) {
+        entry = { ...entry, apiKey: saved.apiKey };
+      }
+
+      return { models: await fetchAvailableModels(entry) };
+    },
+  );
 
   ipcMain.handle(
     'qodea:start',

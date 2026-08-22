@@ -20,6 +20,35 @@ export interface StartRequest {
   history?: unknown[];
 }
 
+export interface ProviderDraft {
+  id: string;
+  kind: string;
+  label: string | null;
+  baseUrl: string | null;
+  apiKeyEnv: string | null;
+  defaultModel: string | null;
+  contextWindow: number | null;
+  azureEndpoint: string | null;
+  azureApiVersion: string | null;
+  azureDeployment: string | null;
+  hasStoredKey: boolean;
+}
+
+export interface SaveDraft {
+  id: string;
+  kind: string;
+  label?: string | null;
+  baseUrl?: string | null;
+  apiKeyEnv?: string | null;
+  defaultModel?: string | null;
+  contextWindow?: number | null;
+  azureEndpoint?: string | null;
+  azureApiVersion?: string | null;
+  azureDeployment?: string | null;
+  newApiKey?: string;
+  clearStoredKey?: boolean;
+}
+
 export type WireEvent =
   | AgentEvent
   | { type: 'permission-request'; requestId: string; tool: string; summary: string }
@@ -35,6 +64,21 @@ declare global {
         defaultProvider: string | null;
         providers: ProviderInfo[];
       }>;
+      getConfig(): Promise<{
+        defaultProvider: string | null;
+        providers: ProviderDraft[];
+      }>;
+      saveConfig(payload: {
+        defaultProvider: string | null;
+        providers: SaveDraft[];
+      }): Promise<{ savedTo: string }>;
+      listModels(req: {
+        id?: string;
+        kind: string;
+        baseUrl?: string;
+        azureEndpoint?: string;
+        newApiKey?: string;
+      }): Promise<{ models: string[] }>;
       startSession(req: StartRequest): Promise<{ sessionId: string }>;
       respondPermission(sessionId: string, requestId: string, approved: boolean): Promise<void>;
       stopSession(sessionId: string): Promise<void>;
