@@ -33,4 +33,22 @@ jobs:
         run: pnpm build
 
       - name: Test
-        run: pnpm test
+        run: pnpm --filter @qodea/core exec vitest run --reporter=default --reporter=json --outputFile.json=test-results.json
+
+      - name: Test failure details
+        if: failure()
+        shell: pwsh
+        run: |
+          $path = 'packages/core/test-results.json'
+          if (-not (Test-Path $path)) { Write-Output '::error::no test-results.json produced'; exit 0 }
+          $j = Get-Content $path -Raw | ConvertFrom-Json
+          foreach ($tr in $j.testResults) {
+            if ($tr.status -ne 'failed') { continue }
+            foreach ($a in $tr.assertionResults) {
+              if ($a.status -eq 'failed') {
+                $msg = ($a.failureMessages -join ' | ') -replace "`r?`n", ' '
+                if ($msg.Length -gt 350) { $msg = $msg.Substring(0, 350) }
+                Write-Output ("::error file={0}::FAILED {1} :: {2}" -f $tr.name, $a.fullName, $msg)
+              }
+            }
+          }
