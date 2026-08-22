@@ -92,3 +92,52 @@ export async function deleteSession(id: string): Promise<void> {
 function firstLine(text: string): string {
   return text.trim().split(/\r?\n/)[0] ?? '';
 }
+
+/* ── projects ─────────────────────────────────────────────────────────────── */
+
+export interface StoredProject {
+  id: string;
+  name: string;
+  cwd: string;
+  createdAt: number;
+}
+
+const projectsFile = (): string => path.join(os.homedir(), '.qodea', 'projects.json');
+
+export async function listProjects(): Promise<StoredProject[]> {
+  try {
+    const raw = await fs.readFile(projectsFile(), 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as StoredProject[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveProjects(list: StoredProject[]): Promise<void> {
+  const dir = path.join(os.homedir(), '.qodea');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(projectsFile(), JSON.stringify(list, null, 2) + '\n', 'utf8');
+}
+
+export async function addProject(cwd: string): Promise<StoredProject> {
+  const all = await listProjects();
+  const norm = cwd.replace(/[\\/]+$/, '');
+  const existing = all.find((p) => p.cwd.toLowerCase() === norm.toLowerCase());
+  if (existing) return existing;
+
+  const name = norm.split(/[\\/]/).pop() || norm;
+  const project: StoredProject = {
+    id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    cwd: norm,
+    createdAt: Date.now(),
+  };
+  all.push(project);
+  await saveProjects(all);
+  return project;
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  await saveProjects((await listProjects()).filter((p) => p.id !== id));
+}

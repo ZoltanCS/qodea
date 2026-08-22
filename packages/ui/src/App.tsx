@@ -3,14 +3,17 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
-import { Settings } from './settings/Settings';
 import { Sidebar } from './sidebar/Sidebar';
 
 type Theme = 'dark' | 'light';
 
 function initialTheme(): Theme {
-  const saved = localStorage.getItem('qodea-theme');
-  return saved === 'light' ? 'light' : 'dark';
+  return localStorage.getItem('qodea-theme') === 'light' ? 'light' : 'dark';
+}
+
+function projectNameOf(cwd: string): string {
+  const norm = cwd.replace(/[\\/]+$/, '');
+  return norm.split(/[\\/]/).pop() || norm;
 }
 
 export function App() {
@@ -45,18 +48,106 @@ export function App() {
   };
 
   const running = chat.status === 'running';
+  const showHome = !running && chat.items.length === 0 && !chat.activeSessionId;
+
+  const projectLabel = (() => {
+    if (!chat.cwd.trim()) return 'Névtelen';
+    const p = chat.projects.find(
+      (x) => x.cwd.toLowerCase() === chat.cwd.trim().toLowerCase(),
+    );
+    return p?.name ?? projectNameOf(chat.cwd.trim());
+  })();
+
+  const onProjectSelect = async (value: string): Promise<void> => {
+    if (value === '__add__') {
+      await chat.addProject();
+      return;
+    }
+    chat.setCwd(value);
+  };
+
+  const composerBox = (
+    <div className={`composer${showHome ? ' big' : ''}`}>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder={
+          running
+            ? 'Qodea dolgozik…'
+            : showHome
+              ? 'Írd le a feladatot…'
+              : 'Feladat leírása…'
+        }
+        disabled={running}
+        rows={showHome ? 3 : 2}
+        autoFocus
+      />
+      <div className="composer-row">
+        <Segmented
+          options={[
+            { value: 'agent', label: 'Agent', hint: 'egy agent végzi a munkát' },
+            { value: 'experts', label: 'Experts', hint: 'több szakértői nézőpont' },
+          ]}
+          value={chat.uiMode}
+          onChange={(v) => chat.setUiMode(v as typeof chat.uiMode)}
+          accent="uimode"
+        />
+        <Segmented
+          options={MODES.map((m) => ({ value: m.value, label: m.label, hint: m.hint }))}
+          value={chat.mode}
+          onChange={(v) => chat.setMode(v as typeof chat.mode)}
+          accent="mode"
+        />
+        <div className="effort-wrap" title="Thinking effort">
+          <span className="effort-label">thinking</span>
+          <Segmented
+            options={EFFORTS.map((e) => ({ value: e.value, label: e.label, hint: e.label }))}
+            value={chat.effort}
+            onChange={(v) => chat.setEffort(v as typeof chat.effort)}
+            accent="effort"
+          />
+        </div>
+
+        <div className="spacer" />
+
+        <ContextRing
+          used={chat.tokensUsed}
+          max={chat.contextWindow}
+          model={chat.model || chat.selectedProvider?.defaultModel || ''}
+        />
+
+        {running ? (
+          <button className="send stop" onClick={() => void chat.stop()} title="Leállítás">
+            ■
+          </button>
+        ) : (
+          <button className="send" onClick={submit} disabled={!draft.trim()} title="Küldés (Enter)">
+            ↑
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="shell">
       <Sidebar
         sessions={chat.sessions}
+        projects={chat.projects}
         activeSessionId={chat.activeSessionId}
         onOpen={(id) => void chat.openSession(id)}
         onDelete={(id) => void chat.removeSession(id)}
         onNewChat={chat.newChat}
+        onAddProject={() => void chat.addProject()}
+        onNewChatInProject={(cwd) => {
+          chat.newChat();
+          chat.setCwd(cwd);
+        }}
         theme={theme}
         onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         settingsOpen={showSettings}
+        onToggleSettings={() => setShowSettings((v) => !v)}
         onCloseSettings={() => {
           setShowSettings(false);
           void chat.reloadProviders();
@@ -64,7 +155,6 @@ export function App() {
       />
 
       <div className="main">
-        {/* minimal top bar */}
         <header className="bar">
           <div className="brand">
             <QodeaBot mood={chat.mood} color={chat.color} size={26} />
@@ -99,72 +189,58 @@ export function App() {
 
         {chat.errorBanner && <div className="banner">{chat.errorBanner}</div>}
 
-        {/* stream */}
-        <div ref={streamRef} className="stream">
-            <div className="col">
-              {chat.items.length === 0 && (
-                <div className="hero">
-                  <QodeaBot mood="idle" color="cream" size={92} />
-                  <h1>Miben segítünk?</h1>
-                  <p>Adj meg egy feladatot — Qodea olvas, ír, futtat, amíg kész nem lesz.</p>
-                </div>
-              )}
-              {chat.items.map((item) => (
-                <Row key={item.id} item={item} onRespond={(id, ok) => void chat.respond(id, ok)} />
-              ))}
-            </div>
-          </div>
+        {showHome ? (
+          <div className="home">
+            <QodeaBot mood="idle" color="cream" size={86} />
+            <h1>Több mint chat. Megcsinálja.</h1>
+            <p className="sub">
+              Mondd meg, mi kell — a Qodea megtervezi, megírja és lefuttatja.
+            </p>
 
-          {/* composer */}
-          <footer className="dock">
-        <div className="composer">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={running ? 'Qodea dolgozik…' : 'Feladat leírása…'}
-            disabled={running}
-            rows={2}
-            autoFocus
-          />
-          <div className="composer-row">
-            <Segmented
-              options={MODES.map((m) => ({ value: m.value, label: m.label, hint: m.hint }))}
-              value={chat.mode}
-              onChange={(v) => chat.setMode(v as typeof chat.mode)}
-              accent="mode"
-            />
-            <div className="effort-wrap" title="Thinking effort — mennyire gondolkodjon mélyen">
-              <span className="effort-label">thinking</span>
-              <Segmented
-                options={EFFORTS.map((e) => ({ value: e.value, label: e.label, hint: e.label }))}
-                value={chat.effort}
-                onChange={(v) => chat.setEffort(v as typeof chat.effort)}
-                accent="effort"
-              />
-            </div>
+            {composerBox}
 
-            <div className="spacer" />
-
-            <ContextRing used={chat.tokensUsed} max={chat.contextWindow} model={chat.model || chat.selectedProvider?.defaultModel || ''} />
-
-            {running ? (
-              <button className="send stop" onClick={() => void chat.stop()} title="Leállítás">
-                ■
-              </button>
-            ) : (
-              <button
-                className="send"
-                onClick={submit}
-                disabled={!draft.trim()}
-                title="Küldés (Enter)"
+            <label className="folder-line" title="Melyik projektben dolgozzon?">
+              ▤ Projekt:{' '}
+              <select
+                value={
+                  chat.projects.some((p) => p.cwd === chat.cwd.trim()) || !chat.cwd.trim()
+                    ? chat.cwd.trim()
+                    : '__custom__'
+                }
+                onChange={(e) => void onProjectSelect(e.target.value)}
               >
-                ↑
-              </button>
-            )}
+                <option value="">Névtelen</option>
+                {chat.projects.map((p) => (
+                  <option key={p.id} value={p.cwd}>
+                    {p.name}
+                  </option>
+                ))}
+                {!chat.cwd.trim() || chat.projects.some((p) => p.cwd === chat.cwd.trim()) ? null : (
+                  <option value="__custom__">{projectLabel}</option>
+                )}
+                <option value="__add__">＋ Új projekt mappa…</option>
+              </select>
+            </label>
           </div>
-        </div>
-      </footer>
+        ) : (
+          <>
+            {/* stream */}
+            <div ref={streamRef} className="stream">
+              <div className="col">
+                {chat.items.map((item) => (
+                  <Row
+                    key={item.id}
+                    item={item}
+                    onRespond={(id, ok) => void chat.respond(id, ok)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* dock */}
+            <footer className="dock">{composerBox}</footer>
+          </>
+        )}
       </div>
     </div>
   );
@@ -277,7 +353,7 @@ function Segmented({
   options: Array<{ value: string; label: string; hint?: string }>;
   value: string;
   onChange: (v: string) => void;
-  accent: 'mode' | 'effort';
+  accent: 'mode' | 'effort' | 'uimode';
 }) {
   return (
     <div className={`seg ${accent}`} role="radiogroup">

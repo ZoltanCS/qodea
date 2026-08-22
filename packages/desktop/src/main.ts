@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -19,9 +19,12 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import { qodeaDir } from '@qodea/core';
 import {
+  addProject,
   appendMessages,
+  deleteProject,
   deleteSession,
   getSession,
+  listProjects,
   listSessions,
   touchSession,
 } from './store.js';
@@ -111,6 +114,7 @@ interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
+  uiMode?: 'agent' | 'experts';
   history?: TurnMessage[];
 }
 
@@ -196,6 +200,10 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       };
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
       if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
+      options.systemSuffix =
+        req.uiMode === 'experts'
+          ? '\n\nExpert mode: before acting, silently consider the task from multiple specialist perspectives (architect, implementer, reviewer) and pick the strongest plan.'
+          : undefined;
 
       const iterator = runAgent(options);
 
@@ -334,6 +342,20 @@ function registerIpc(win: () => BrowserWindow): void {
       return { models: await fetchAvailableModels(entry) };
     },
   );
+
+  // ── projects: sidebar folders + native folder picker ─────────────────────
+  ipcMain.handle('qodea:projects:list', () => listProjects());
+
+  ipcMain.handle('qodea:projects:add', async () => {
+    const result = await dialog.showOpenDialog(win(), {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Projekt mappa kiválasztása',
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return addProject(result.filePaths[0]!);
+  });
+
+  ipcMain.handle('qodea:projects:delete', (_e, id: string) => deleteProject(id));
 
   // ── sessions: sidebar tree data ──────────────────────────────────────────
   ipcMain.handle('qodea:sessions:list', async () => {

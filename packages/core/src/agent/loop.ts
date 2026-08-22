@@ -31,6 +31,8 @@ export interface AgentRunOptions {
   /** Host-provided permission prompter. Required in `default` mode; ignored by yolo/read-only. */
   asker?: PermissionAsker;
   systemPrompt?: string;
+  /** Appended to the default system prompt (e.g. expert-mode hint). */
+  systemSuffix?: string;
   tools?: Tool[];
   /** Seed transcript — pass a previous result's messages to continue a chat. */
   initialMessages?: TurnMessage[];
@@ -71,8 +73,9 @@ export async function* runAgent(
     {
       role: 'system',
       content:
-        opts.systemPrompt ??
-        buildSystemPrompt({ cwd: opts.cwd, tools: specs }),
+        (opts.systemPrompt ??
+          buildSystemPrompt({ cwd: opts.cwd, tools: specs })) +
+        (opts.systemSuffix ?? ''),
     },
     ...(opts.initialMessages ?? []),
     userMessage(opts.task),

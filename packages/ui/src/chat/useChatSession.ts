@@ -6,6 +6,7 @@ import type {
   WireEvent,
   SessionSummary,
   StoredSession,
+  ProjectInfo,
 } from '../ipc.d';
 import type { PermissionMode, TurnMessage } from '@qodea/core';
 
@@ -46,7 +47,9 @@ export function useChatSession() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [history, setHistory] = useState<TurnMessage[]>([]);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [uiMode, setUiMode] = useState<'agent' | 'experts'>('agent');
   const [flash, setFlash] = useState<BotMood | null>(null);
   const [tokensUsed, setTokensUsed] = useState(0);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -62,7 +65,17 @@ export function useChatSession() {
 
   const reloadSessions = useCallback(async () => {
     setSessions(await window.qodea.sessionsList());
+    setProjects(await window.qodea.projectsList());
   }, []);
+
+  const addProject = useCallback(async () => {
+    const created = await window.qodea.projectAdd();
+    if (created) {
+      await reloadSessions();
+      setCwd(created.cwd);
+    }
+    return created;
+  }, [reloadSessions]);
 
   useEffect(() => {
     void reloadSessions();
@@ -208,6 +221,7 @@ export function useChatSession() {
           model: model.trim() || undefined,
           mode,
           reasoningEffort: effort,
+          uiMode,
           cwd: cwd.trim(),
           history: history.length > 0 ? history : undefined,
         };
@@ -219,7 +233,7 @@ export function useChatSession() {
         setStatus('idle');
       }
     },
-    [status, providerId, model, mode, effort, cwd, history, activeSessionId],
+    [status, providerId, model, mode, effort, uiMode, cwd, history, activeSessionId],
   );
 
   /** Opens a stored session back into the view and continues it. */
@@ -349,7 +363,11 @@ export function useChatSession() {
     respond,
     reloadProviders,
     sessions,
+    projects,
+    addProject,
     activeSessionId,
+    uiMode,
+    setUiMode,
     openSession,
     newChat,
     removeSession,

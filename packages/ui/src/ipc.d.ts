@@ -10,6 +10,13 @@ export interface ProviderInfo {
   contextWindow?: number;
 }
 
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  cwd: string;
+  createdAt: number;
+}
+
 export interface StartRequest {
   sessionId?: string;
   task: string;
@@ -18,6 +25,7 @@ export interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
+  uiMode?: 'agent' | 'experts';
   history?: unknown[];
 }
 
@@ -79,6 +87,9 @@ declare global {
       sessionsList(): Promise<SessionSummary[]>;
       sessionGet(id: string): Promise<StoredSession | null>;
       sessionDelete(id: string): Promise<void>;
+      projectsList(): Promise<ProjectInfo[]>;
+      projectAdd(): Promise<ProjectInfo | null>;
+      projectDelete(id: string): Promise<void>;
       getConfig(): Promise<{
         defaultProvider: string | null;
         providers: ProviderDraft[];

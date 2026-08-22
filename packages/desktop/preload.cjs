@@ -8,6 +8,10 @@ contextBridge.exposeInMainWorld('qodea', {
   sessionGet: (id) => ipcRenderer.invoke('qodea:sessions:get', id),
   sessionDelete: (id) => ipcRenderer.invoke('qodea:sessions:delete', id),
 
+  projectsList: () => ipcRenderer.invoke('qodea:projects:list'),
+  projectAdd: () => ipcRenderer.invoke('qodea:projects:add'),
+  projectDelete: (id) => ipcRenderer.invoke('qodea:projects:delete', id),
+
   getConfig: () => ipcRenderer.invoke('qodea:getConfig'),
   saveConfig: (payload) => ipcRenderer.invoke('qodea:saveConfig', payload),
   listModels: (req) => ipcRenderer.invoke('qodea:listModels', req),
