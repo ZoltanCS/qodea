@@ -90,6 +90,51 @@ describe('OpenAICompatProvider', () => {
       { type: 'done', stopReason: 'tool-use' },
     ]);
   });
+
+  it('sends reasoning_effort on the wire when requested', async () => {
+    const baseUrl = await start((body) => {
+      const parsed = JSON.parse(body) as { reasoning_effort?: string };
+      expect(parsed.reasoning_effort).toBe('high');
+      return sse([{ id: 'c3', choices: [{ index: 0, delta: { content: 'ok' }, finish_reason: 'stop' }] }]);
+    });
+
+    const provider = new OpenAICompatProvider({
+      id: 'mock',
+      kind: 'openai-compatible',
+      baseUrl,
+      apiKey: 'test-key',
+    });
+
+    await collect(
+      provider.streamChat({ ...chatReq(), reasoningEffort: 'high' }),
+    );
+  });
+
+  it('streams reasoning_content deltas as reasoning-delta events', async () => {
+    const baseUrl = await start(() =>
+      sse([
+        { id: 'c4', choices: [{ index: 0, delta: { reasoning_content: 'thinking ' } }] },
+        { id: 'c4', choices: [{ index: 0, delta: { reasoning_content: 'hard...' } }] },
+        { id: 'c4', choices: [{ index: 0, delta: { content: 'Answer' } }] },
+        { id: 'c4', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      ]),
+    );
+
+    const provider = new OpenAICompatProvider({
+      id: 'mock',
+      kind: 'openai-compatible',
+      baseUrl,
+      apiKey: 'test-key',
+    });
+
+    const events = [...(await collect(provider.streamChat(chatReq())))];
+    expect(events).toEqual([
+      { type: 'reasoning-delta', text: 'thinking ' },
+      { type: 'reasoning-delta', text: 'hard...' },
+      { type: 'text-delta', text: 'Answer' },
+      { type: 'done', stopReason: 'end' },
+    ]);
+  });
 });
 
 function chatReq() {
