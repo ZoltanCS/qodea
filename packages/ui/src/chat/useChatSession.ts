@@ -7,6 +7,8 @@ export interface ChatItem {
   id: string;
   kind: 'user' | 'assistant' | 'tool' | 'permission';
   text?: string;
+  /** live reasoning ("thinking") stream — shown dimmed, not part of the answer */
+  reasoning?: string;
   /** tool result output */
   content?: string;
   name?: string;
@@ -83,6 +85,19 @@ export function useChatSession() {
   useEffect(() => {
     const unsub = window.qodea.onEvent((_sid, ev: WireEvent) => {
       switch (ev.type) {
+        case 'reasoning-delta': {
+          setItems((prev) => {
+            const last = prev[prev.length - 1];
+            // attach to the current assistant turn while it has no visible text yet
+            if (last?.kind === 'assistant' && !last.text) {
+              const copy = [...prev.slice(0, -1)];
+              copy.push({ ...last, reasoning: (last.reasoning ?? '') + ev.text });
+              return copy;
+            }
+            return [...prev, { kind: 'assistant', id: nextId(), reasoning: ev.text }];
+          });
+          break;
+        }
         case 'text-delta': {
           setItems((prev) => {
             const last = prev[prev.length - 1];

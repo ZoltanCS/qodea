@@ -113,9 +113,7 @@ describe('agent loop', () => {
 
   it('blocks writes outright in read-only mode without asking', async () => {
     const cwd = await makeWorkspace();
-    const asker = vi.fn<Parameters<PermissionAsker>, ReturnType<PermissionAsker>>(
-      async () => true,
-    );
+    const asker = vi.fn(async (): Promise<boolean> => true);
 
     const provider = new FakeProvider((req, i) => {
       if (i === 0) return callTool('c1', 'write_file', { path: 'x.txt', content: 'x' });

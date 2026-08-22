@@ -15,6 +15,7 @@ import { buildSystemPrompt } from './prompt.js';
 export type AgentEvent =
   | { type: 'turn-start'; turn: number }
   | { type: 'text-delta'; text: string }
+  | { type: 'reasoning-delta'; text: string }
   | { type: 'tool-start'; callId: string; name: string; summary: string }
   | { type: 'tool-result'; name: string; content: string; isError: boolean }
   | { type: 'permission-denied'; name: string; summary: string }
@@ -102,6 +103,9 @@ export async function* runAgent(
       if (ev.type === 'text-delta') {
         text += ev.text;
         yield { type: 'text-delta', text: ev.text };
+      } else if (ev.type === 'reasoning-delta') {
+        // live thinking — surfaced to the UI, deliberately not stored in the transcript
+        yield { type: 'reasoning-delta', text: ev.text };
       } else if (ev.type === 'tool-call') {
         calls.push({ id: ev.id, name: ev.name, argumentsJson: ev.argumentsJson });
       } else if (ev.type === 'usage') {

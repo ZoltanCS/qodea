@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
+
+type Theme = 'dark' | 'light';
+
+function initialTheme(): Theme {
+  const saved = localStorage.getItem('qodea-theme');
+  return saved === 'light' ? 'light' : 'dark';
+}
 
 export function App() {
   const chat = useChatSession();
   const [draft, setDraft] = useState('');
+  const [theme, setTheme] = useState<Theme>(initialTheme);
   const streamRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset['theme'] = theme;
+    localStorage.setItem('qodea-theme', theme);
+  }, [theme]);
 
   const submit = useCallback(() => {
     if (!draft.trim() || chat.status === 'running') return;
@@ -45,6 +60,13 @@ export function App() {
             onChange={(e) => chat.setCwd(e.target.value)}
             spellCheck={false}
           />
+          <button
+            className="theme-toggle"
+            title={theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
           <select
             className="ghost-select"
             value={chat.providerId}
@@ -155,7 +177,12 @@ function Row({
     case 'assistant':
       return (
         <div className="row assistant">
-          <div className="a-text">{item.text}</div>
+          {item.reasoning && <Thinking text={item.reasoning} live={!item.text} />}
+          {item.text && (
+            <div className="md" onClick={blockLinks}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.text}</ReactMarkdown>
+            </div>
+          )}
         </div>
       );
 
@@ -199,6 +226,31 @@ function Row({
       );
     }
   }
+}
+
+/* ── thinking block ───────────────────────────────────────────────────────── */
+
+function Thinking({ text, live }: { text: string; live: boolean }) {
+  if (live) {
+    return (
+      <div className="think live">
+        <span className="lbl">gondolkodik</span>
+        <div className="t-body">{text}</div>
+      </div>
+    );
+  }
+  return (
+    <details className="think">
+      <summary>gondolatmenet</summary>
+      <div className="t-body">{text}</div>
+    </details>
+  );
+}
+
+/** Keep in-app markdown links from navigating the Electron window away. */
+function blockLinks(e: React.MouseEvent<HTMLDivElement>): void {
+  const target = e.target as HTMLElement;
+  if (target.tagName === 'A') e.preventDefault();
 }
 
 /* ── segmented control ────────────────────────────────────────────────────── */

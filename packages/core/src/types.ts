@@ -53,6 +53,7 @@ export type StopReason = 'end' | 'tool-use' | 'length' | 'other';
  */
 export type StreamEvent =
   | { type: 'text-delta'; text: string }
+  | { type: 'reasoning-delta'; text: string }
   | { type: 'tool-call'; id: string; name: string; argumentsJson: string }
   | { type: 'usage'; inputTokens?: number; outputTokens?: number }
   | { type: 'done'; stopReason: StopReason };

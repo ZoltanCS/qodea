@@ -100,7 +100,16 @@ export class OpenAICompatProvider implements Provider {
       const choice = chunk.choices?.[0];
       if (!choice) continue;
 
-      const delta = choice.delta;
+      const delta = choice.delta as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta & {
+        reasoning_content?: string;
+        reasoning?: string;
+      };
+
+      const reasoning = delta?.reasoning_content ?? delta?.reasoning;
+      if (typeof reasoning === 'string' && reasoning.length > 0) {
+        yield { type: 'reasoning-delta', text: reasoning };
+      }
+
       if (delta?.content) yield { type: 'text-delta', text: delta.content };
 
       for (const tc of delta?.tool_calls ?? []) {
