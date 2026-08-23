@@ -15,6 +15,7 @@ let pwMod: PW | null = null;
 let browser: any = null;
 let context: any = null;
 let page: any = null;
+let lastLaunchOpts: Record<string, unknown> | null = null;
 
 async function loadPlaywright(): Promise<PW> {
   if (pwMod) return pwMod;
@@ -33,11 +34,30 @@ export async function getPage(opts?: { headless?: boolean }): Promise<any> {
   const headless = opts?.headless ?? false;
 
   if (!browser || !browser.isConnected()) {
-    try {
-      browser = await pw.chromium.launch({ channel: 'chrome', headless });
-    } catch {
-      // no system Chrome → fall back to bundled/downloaded chromium
-      browser = await pw.chromium.launch({ headless });
+    // Chrome → Edge (Windows guaranteed) → downloaded chromium
+    const attempts: Array<Record<string, unknown>> = [
+      { channel: 'chrome', headless },
+      { channel: 'msedge', headless },
+      { headless },
+    ];
+    let lastError: unknown;
+    let launched = false;
+    for (const attempt of attempts) {
+      try {
+        browser = await pw.chromium.launch(attempt);
+        lastLaunchOpts = attempt;
+        launched = true;
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    if (!launched) {
+      throw new Error(
+        'Nem sikerült böngészőt indítani (Chrome/Edge/chromium).\n' +
+          'Futtasd egyszer: pnpm exec playwright install chromium\n' +
+          `Utolsó hiba: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+      );
     }
     context = await browser.newContext();
   }
