@@ -11,6 +11,10 @@ interface AvatarProps {
   size?: number;
   /** breathe + subtle cursor tracking */
   animate?: boolean;
+  /** researcher look — glasses over the eyes */
+  glasses?: boolean;
+  /** effort droplets flying off the head */
+  sweat?: boolean;
 }
 
 /* ── liquid morphing ───────────────────────────────────────────────────────
@@ -170,7 +174,7 @@ function Face({ face, col }: { face: AvatarCfg['face']; col: string }) {
   }
 }
 
-export function Avatar({ cfg, size = 64, animate = false }: AvatarProps) {
+export function Avatar({ cfg, size = 64, animate = false, glasses = false, sweat = false }: AvatarProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const gradId = `av-g-${uid}`;
   const shadowId = `av-s-${uid}`;
@@ -274,8 +278,44 @@ export function Avatar({ cfg, size = 64, animate = false }: AvatarProps) {
         <path d={dAttr} fill={`url(#${gradId})`} />
         <g ref={trackRef}>
           <Face face={cfg.face} col={fCol} />
+          {glasses && <Glasses col={fCol} />}
         </g>
+        {sweat && <Sweat />}
       </g>
     </svg>
+  );
+}
+
+/** Round research glasses — aligned to the eye line (cx 82 / cx 122), thin frames. */
+function Glasses({ col }: { col: string }) {
+  return (
+    <g stroke={col} strokeWidth="3.4" strokeLinecap="round">
+      {/* lenses — centered exactly on the eyes */}
+      <rect x="63" y="81" width="38" height="24" rx="10" fill="rgba(255,255,255,0.14)" />
+      <rect x="103" y="81" width="38" height="24" rx="10" fill="rgba(255,255,255,0.14)" />
+      {/* bridge */}
+      <line x1="101" y1="91" x2="103" y2="91" />
+      {/* temples */}
+      <line x1="63" y1="89" x2="42" y2="83" />
+      <line x1="141" y1="89" x2="158" y2="83" />
+    </g>
+  );
+}
+
+/** Effort droplets (same visual language as the main mascot). */
+function Sweat() {
+  return (
+    <g fill="#7ec8f7">
+      <path
+        className="qb-drop qb-drop-a"
+        d="M0 -5 C3 -1.5 4.5 1 0 4.5 C-4.5 1 -3 -1.5 0 -5 Z"
+        transform="translate(168 54)"
+      />
+      <path
+        className="qb-drop qb-drop-c"
+        d="M0 -4.5 C2.7 -1.4 4 0.9 0 4 C-4 0.9 -2.7 -1.4 0 -4.5 Z"
+        transform="translate(150 28)"
+      />
+    </g>
   );
 }

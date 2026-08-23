@@ -28,13 +28,51 @@ interface Props {
   onCloseTab: (id: string) => void;
 }
 
-function personaAvatar(color: string, face: string, size = 24): React.ReactNode {
+function personaAvatar(
+  color: string,
+  face: string,
+  size = 24,
+  animate = true,
+  opts?: { glasses?: boolean; sweat?: boolean },
+): React.ReactNode {
   const cfg: AvatarCfg = {
     shape: 'circle',
     face: (face as AvatarCfg['face']) ?? 'neutral',
     color,
   };
-  return <Avatar cfg={cfg} size={size} />;
+  return (
+    <Avatar
+      cfg={cfg}
+      size={size}
+      animate={animate}
+      glasses={opts?.glasses}
+      sweat={opts?.sweat}
+    />
+  );
+}
+
+const RESEARCHERS = new Set(['explorer', 'planner', 'reviewer']);
+const CODERS = new Set(['worker', 'tester']);
+
+/** Activity state from the agent's live stream. */
+function agentLook(
+  agent: DeployedAgent,
+  stream: ChatItem[],
+): { glasses: boolean; sweat: boolean } {
+  const isResearch = RESEARCHERS.has(agent.personaId);
+  const isCoder = CODERS.has(agent.personaId);
+
+  if (agent.status !== 'running') {
+    // finished researchers keep their glasses; coders cool down
+    return { glasses: isResearch, sweat: false };
+  }
+
+  if (isCoder) return { glasses: false, sweat: true };
+  if (isResearch) {
+    // while actively running a tool they lean in — glasses stay on regardless
+    return { glasses: true, sweat: false };
+  }
+  return { glasses: false, sweat: false };
 }
 
 export function AgentPanel(props: Props) {
@@ -89,6 +127,7 @@ export function AgentPanel(props: Props) {
               <AgentRow
                 key={a.id}
                 agent={a}
+                stream={props.streams[a.id] ?? []}
                 onOpen={() => props.onActivate(a.id)}
                 active={props.activeTab === a.id}
               />
@@ -114,7 +153,10 @@ export function AgentPanel(props: Props) {
             return (
               <div className="rp-agent-view">
                 <div className="rp-agent-head">
-                  {personaAvatar(agent.color, agent.face, 34)}
+                  {(() => {
+                    const look = agentLook(agent, props.streams[agent.id] ?? []);
+                    return personaAvatar(agent.color, agent.face, 34, true, look);
+                  })()}
                   <div className="ah-txt">
                     <strong>{agent.name}</strong>
                     <span className={agent.status}>
@@ -149,17 +191,20 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function AgentRow({
   agent,
+  stream,
   onOpen,
   active,
 }: {
   agent: DeployedAgent;
+  stream: ChatItem[];
   onOpen: () => void;
   active: boolean;
 }) {
+  const look = agentLook(agent, stream);
   return (
     <button className={`ag-row${active ? ' on' : ''}`} onClick={onOpen} title={agent.task}>
       <span className="ag-ava">
-        {personaAvatar(agent.color, agent.face, 26)}
+        {personaAvatar(agent.color, agent.face, 26, true, look)}
         <span className={`ag-dot ${agent.status}`} />
       </span>
       <span className="ag-info">
