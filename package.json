@@ -14,7 +14,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "smoke": "turbo run smoke",
-    "installer": "pnpm build && node packages/desktop/scripts/pack-prep.mjs && packages/desktop/node_modules/.bin/electron-builder.cmd --win --config electron-builder.yml",
+    "installer": "pnpm build && node packages/desktop/scripts/pack-prep.mjs && pnpm --filter @qodea/desktop exec electron-builder --win --config ../../electron-builder.yml --config.directories.app=build --config.directories.output=../../release",
     "dev": "node scripts/dev.mjs"
   },
   "devDependencies": {
