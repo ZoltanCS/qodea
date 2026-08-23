@@ -17,6 +17,7 @@ const BUILTIN: PersonaInfo[] = [
   { id: 'reviewer', label: 'Reviewer', color: '#f08b1f', face: 'suspicious', desc: 'kritizál, hibákat keres' },
   { id: 'planner', label: 'Tervező', color: '#8a63e8', face: 'attentive', desc: 'lépésekre bontja a feladatot' },
   { id: 'tester', label: 'Teszter', color: '#e2503c', face: 'attentive', desc: 'teszteket futtat, elemzi' },
+  { id: 'netlord', label: 'Netlord', color: '#39b8a0', face: 'proud', desc: 'pökhendi webes kutató' },
 ];
 
 interface Props {

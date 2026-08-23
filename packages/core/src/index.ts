@@ -48,6 +48,8 @@ export { editTool } from './tools/edit.js';
 export { globTool } from './tools/glob.js';
 export { grepTool } from './tools/grep.js';
 export { bashTool } from './tools/bash.js';
+export { webSearchTool, webFetchTool } from './tools/web.js';
+export { createBrowserTools } from './tools/web-browser.js';
 export { todoWriteTool, renderTodos } from './tools/todo-write.js';
 
 // ── permissions ──────────────────────────────────────────────────────────────

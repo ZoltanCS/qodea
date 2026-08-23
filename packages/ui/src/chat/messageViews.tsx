@@ -121,6 +121,15 @@ const TOOL_META: Record<string, { verb: string; icon: Parameters<typeof Icon>[0]
   bash: { verb: 'Parancs', icon: 'terminal' },
   todo_write: { verb: 'Teendők', icon: 'list' },
   spawn_agent: { verb: 'Al-agent indítása', icon: 'agents' },
+  web_search: { verb: 'Webkeresés', icon: 'search' },
+  web_fetch: { verb: 'Oldal olvasása', icon: 'file' },
+  browser_navigate: { verb: 'Böngésző: megnyitás', icon: 'globe' },
+  browser_snapshot: { verb: 'Böngésző: elemzés', icon: 'search' },
+  browser_click: { verb: 'Böngésző: kattintás', icon: 'pen' },
+  browser_type: { verb: 'Böngésző: beírás', icon: 'file' },
+  browser_scroll: { verb: 'Böngésző: görgetés', icon: 'list' },
+  browser_screenshot: { verb: 'Képernyőkép', icon: 'camera' },
+  browser_close: { verb: 'Böngésző: bezárás', icon: 'gear' },
 };
 
 function toolArgs(name: string, summary?: string): string {

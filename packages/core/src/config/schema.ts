@@ -34,6 +34,11 @@ export const configSchema = z.object({
   version: z.literal(1).default(1),
   defaultProvider: z.string().optional(),
   providers: z.array(providerEntrySchema).default([]),
+  web: z
+    .object({
+      searxngUrl: z.string().url().optional(),
+    })
+    .optional(),
 });
 
 export type ProviderEntry = z.infer<typeof providerEntrySchema>;

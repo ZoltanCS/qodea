@@ -17,7 +17,9 @@ export type IconName =
   | 'filePlus'
   | 'pen'
   | 'search'
-  | 'list';
+  | 'list'
+  | 'globe'
+  | 'camera';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   // sliders / gear-ish for general
@@ -142,6 +144,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="4.8" cy="6.5" r="1" fill="currentColor" stroke="none" />
       <circle cx="4.8" cy="12" r="1" fill="currentColor" stroke="none" />
       <circle cx="4.8" cy="17.5" r="1" fill="currentColor" stroke="none" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" fill="none" />
+      <ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" />
+      <line x1="3.5" y1="12" x2="20.5" y2="12" />
+    </>
+  ),
+  camera: (
+    <>
+      <path d="M4 7.5 h11 a1.5 1.5 0 0 1 1.5 1.5 v8 a1.5 1.5 0 0 1 -1.5 1.5 H4 A1.5 1.5 0 0 1 2.5 17 V9 A1.5 1.5 0 0 1 4 7.5 Z M15.5 10.5 L21.5 7.5 V16.5 L15.5 13.5 Z" fill="none" strokeLinejoin="round" />
+      <circle cx="9" cy="13" r="2.6" fill="none" />
     </>
   ),
 };

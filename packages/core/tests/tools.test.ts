@@ -165,6 +165,15 @@ describe('registry', () => {
       'grep_files',
       'bash',
       'todo_write',
+      'web_search',
+      'web_fetch',
+      'browser_navigate',
+      'browser_snapshot',
+      'browser_click',
+      'browser_type',
+      'browser_scroll',
+      'browser_screenshot',
+      'browser_close',
     ]);
 
     for (const t of tools) {
