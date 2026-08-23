@@ -17,7 +17,7 @@ export class FakeProvider implements Provider {
   private callIndex = 0;
 
   constructor(
-    private readonly script: (req: ChatRequest, callIndex: number) => StreamEvent[],
+    protected readonly script: (req: ChatRequest, callIndex: number) => StreamEvent[],
   ) {}
 
   async *streamChat(req: ChatRequest): AsyncGenerator<StreamEvent, void, unknown> {
