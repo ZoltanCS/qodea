@@ -124,7 +124,7 @@ export function App() {
 
         {running ? (
           <button className="send stop" onClick={() => void chat.stop()} title="Leállítás">
-            ■
+            Stop
           </button>
         ) : (
           <button className="send" onClick={submit} disabled={!draft.trim()} title="Küldés (Enter)">
@@ -164,7 +164,6 @@ export function App() {
       <div className="main">
         <header className="bar">
           <div className="brand">
-            <QodeaBot mood={chat.mood} color={chat.color} size={26} />
             <span className="brand-name">Qodea</span>
           </div>
 
@@ -207,7 +206,7 @@ export function App() {
             {composerBox}
 
             <label className="folder-line" title="Melyik projektben dolgozzon?">
-              ▤ Projekt:{' '}
+              Projekt:{' '}
               <select
                 value={
                   chat.projects.some((p) => p.cwd === chat.cwd.trim()) || !chat.cwd.trim()

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { SessionSummary, ProjectInfo } from '../ipc.d';
 import { Avatar } from '../avatar/Avatar';
 import type { AvatarCfg } from '../avatar/avatarConfig';
+import { Icon } from '../ui/Icon';
 
 interface SidebarProps {
   sessions: SessionSummary[];
@@ -34,7 +35,7 @@ export function Sidebar(props: SidebarProps) {
           + Új feladat
         </button>
         <button className="new-chat" onClick={() => void props.onAddProject()} title="Projekt mappa megnyitása">
-          ▤ Új projekt
+          Új projekt
         </button>
       </div>
 
@@ -45,7 +46,7 @@ export function Sidebar(props: SidebarProps) {
           className={`side-row settings-link${props.settingsOpen ? ' on' : ''}`}
           onClick={props.onToggleSettings}
         >
-          <span className="ic">⚙</span> Beállítások
+          <span className="ic"><Icon name="gear" size={14} /></span> Beállítások
         </button>
         <div className="account" onClick={props.onOpenAccount} role="button" title="Profil és avatar">
           <Avatar cfg={props.avatar} size={28} />
@@ -59,7 +60,7 @@ export function Sidebar(props: SidebarProps) {
               props.onToggleTheme();
             }}
           >
-            {props.theme === 'dark' ? '☀' : '☾'}
+            <Icon name={props.theme === 'dark' ? 'sun' : 'moon'} size={14} />
           </button>
         </div>
       </div>
@@ -115,7 +116,7 @@ function SessionTree({
     return (
       <div className="tree">
         <div className="tree-empty">
-          Még nincs beszélgetés.<br />Indíts egyet, vagy nyiss meg egy projektet! 👋
+          Még nincs beszélgetés.<br />Indíts egyet, vagy nyiss meg egy projektet!
         </div>
       </div>
     );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ProviderDraft, SaveDraft } from '../ipc.d';
 import type { PermissionMode } from '@qodea/core';
 import { QodeaBot } from '../mascot/QodeaBot';
+import { Icon, type IconName } from '../ui/Icon';
 import { loadPrefs, savePrefs } from '../chat/prefs';
 
 const KINDS = [
@@ -25,20 +26,20 @@ type TabId =
 
 interface TabDef {
   id: TabId;
-  icon: string;
+  icon: IconName;
   label: string;
   soon?: boolean;
 }
 
 const TABS: TabDef[] = [
-  { id: 'general', icon: '⚙', label: 'Általános' },
-  { id: 'providers', icon: '⌁', label: 'Szolgáltatók' },
-  { id: 'agents', icon: '🤖', label: 'Agentek' },
-  { id: 'skills', icon: '🧩', label: 'Skillek', soon: true },
-  { id: 'plugins', icon: '🧱', label: 'Pluginek', soon: true },
-  { id: 'integrations', icon: '🔗', label: 'Integrációk', soon: true },
-  { id: 'themes', icon: '🎨', label: 'Témák', soon: true },
-  { id: 'about', icon: 'ℹ', label: 'Névjegy' },
+  { id: 'general', icon: 'general', label: 'Általános' },
+  { id: 'providers', icon: 'providers', label: 'Szolgáltatók' },
+  { id: 'agents', icon: 'agents', label: 'Agentek' },
+  { id: 'skills', icon: 'skills', label: 'Skillek', soon: true },
+  { id: 'plugins', icon: 'plugins', label: 'Pluginek', soon: true },
+  { id: 'integrations', icon: 'integrations', label: 'Integrációk', soon: true },
+  { id: 'themes', icon: 'themes', label: 'Témák', soon: true },
+  { id: 'about', icon: 'about', label: 'Névjegy' },
 ];
 
 /* ── provider drafts ──────────────────────────────────────────────────────── */
@@ -223,10 +224,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
   return (
     <div className="settings hub">
       <header className="set-head">
-        <div className="brand">
-          <QodeaBot mood="idle" color="cream" size={26} />
-          <h2>Beállítások</h2>
-        </div>
+        <h2>Beállítások</h2>
         <button className="icon-btn" onClick={onClose} title="Bezárás">
           ✕
         </button>
@@ -241,7 +239,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
               className={`cat-item${tab === t.id ? ' on' : ''}`}
               onClick={() => setTab(t.id)}
             >
-              <span className="ic">{t.icon}</span>
+              <span className="ic"><Icon name={t.icon} size={15} /></span>
               <span className="lbl">{t.label}</span>
               {t.soon && <span className="soon">hamarosan</span>}
             </button>
@@ -281,7 +279,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           {tab === 'general' && (
             <Placeholder
               title="Általános"
-              note="Nyelv, indítási viselkedés, automatikus frissítések és telemetria ide kerül. A világos/sötét téma váltó egyelőre az app alján lévő ☀/☾ gombbal érhető el."
+              note="Nyelv, indítási viselkedés, automatikus frissítések és telemetria ide kerül. A világos/sötét téma váltó egyelőre a sidebar alján lévő téma-gombbal érhető el."
             />
           )}
 
@@ -602,7 +600,6 @@ function AboutTab() {
 function Placeholder({ title, note, soon }: { title: string; note: string; soon?: boolean }) {
   return (
     <div className="soon-panel">
-      {soon && <div className="soon-icon">🚧</div>}
       <h3>{title}</h3>
       <p className="dim">{note}</p>
       {soon && <span className="badge">Hamarosan</span>}
