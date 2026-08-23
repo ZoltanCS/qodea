@@ -403,11 +403,20 @@ function toolArgs(name: string, summary?: string): string {
 
 function ToolCard({ item }: { item: ChatItem }) {
   const [copied, setCopied] = useState(false);
+  const [, tick] = useState(0);
   const meta = TOOL_META[item.name ?? ''] ?? { verb: 'Eszköz', icon: 'terminal' as IconName };
   const argText = toolArgs(item.name ?? '', item.summary);
 
+  // live elapsed seconds while running
+  useEffect(() => {
+    if (!item.running) return;
+    const id = setInterval(() => tick((t) => t + 1), 500);
+    return () => clearInterval(id);
+  }, [item.running]);
+
   // ── running: fixed open card, no toggle — just shows it is working ──
   if (item.running) {
+    const elapsed = item.startedAt ? Math.max(0, (Date.now() - item.startedAt) / 1000) : 0;
     return (
       <div className="tool-card run open">
         <div className="tc-head">
@@ -417,6 +426,7 @@ function ToolCard({ item }: { item: ChatItem }) {
           <span className="tc-verb">{meta.verb}</span>
           {argText && <code className="tc-arg">{argText}</code>}
           <span className="tc-right">
+            <span className="tc-dur">{elapsed.toFixed(0)} s</span>
             <span className="spin" aria-label="fut" />
             <span className="tc-runlabel">fut…</span>
           </span>

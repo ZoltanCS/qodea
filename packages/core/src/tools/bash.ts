@@ -25,13 +25,19 @@ export const bashTool: Tool = {
         type: 'number',
         description: `Timeout in ms (default ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
       },
+      background: {
+        type: 'boolean',
+        description:
+          'Start without waiting for exit (dev servers, watchers, anything long-running). Returns immediately with the PID.',
+      },
     },
     required: ['command'],
   },
 
   describe(args) {
     const cmd = String(args['command'] ?? '?');
-    return `run \`${cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd}\``;
+    const bg = args['background'] === true ? ' (hátérben)' : '';
+    return `futtatja: ${cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd}${bg}`;
   },
 
   async run(rawArgs, ctx) {
@@ -39,19 +45,58 @@ export const bashTool: Tool = {
     if (typeof command !== 'string' || command.trim().length === 0) {
       throw new InvalidArgsError('bash requires a "command" string');
     }
-    const timeout = clampTimeout(rawArgs['timeout_ms']);
 
+    // Long-running commands (servers, watchers) must go to the background,
+    // otherwise the tool would block until timeout.
+    const looksLikeServer =
+      /\b(serve|serve\.|http-server|vite|next\s+(dev|start)|npm\s+run\s+dev|start|live-server|python\s+-m\s*http)\b/i.test(
+        command,
+      );
+
+    if (rawArgs['background'] === true || (looksLikeServer && rawArgs['background'] !== false)) {
+      return startBackground(command, ctx.cwd);
+    }
+
+    const timeout = clampTimeout(rawArgs['timeout_ms']);
     const result = await exec(command, ctx.cwd, timeout, ctx.signal);
 
     const parts: string[] = [];
-    if (result.timedOut) parts.push(`[timed out after ${timeout}ms — process killed]`);
-    parts.push(`[exit code: ${result.code ?? 'killed'}]`);
+    if (result.timedOut) {
+      parts.push(`[timed out after ${Math.round(timeout / 1000)}s — killed]`);
+      parts.push('[hint: szerver/figyelőkhoz használd background: true]');
+    } else {
+      parts.push(`[exit code: ${result.code ?? 'killed'}]`);
+    }
     if (result.stdout) parts.push(`--- stdout ---\n${cap(result.stdout)}`);
     if (result.stderr) parts.push(`--- stderr ---\n${cap(result.stderr)}`);
     if (!result.stdout && !result.stderr && result.code === 0) parts.push('(no output)');
     return parts.join('\n');
   },
 };
+
+function startBackground(command: string, cwd: string): string {
+  const isWin = process.platform === 'win32';
+  const child = isWin
+    ? spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
+        cwd,
+        detached: false,
+        stdio: 'ignore',
+        env: { ...process.env, npm_config_yes: 'true' },
+      })
+    : spawn(process.env['SHELL'] ?? '/bin/bash', ['-c', command], {
+        cwd,
+        detached: false,
+        stdio: 'ignore',
+        env: { ...process.env, npm_config_yes: 'true' },
+      });
+  const pid = child.pid ?? '?';
+  child.unref();
+  return [
+    '[háttérben indítva]',
+    `PID: ${pid}`,
+    'A parancs fut — nem várunk rá. Ha kiszolgáló, ellenőrizd a portot/URL-t egy külön gyors paranccsal.',
+  ].join('\n');
+}
 
 function exec(
   command: string,
@@ -62,8 +107,14 @@ function exec(
   return new Promise((resolve) => {
     const isWin = process.platform === 'win32';
     const child = isWin
-      ? spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { cwd })
-      : spawn(process.env['SHELL'] ?? '/bin/bash', ['-c', command], { cwd });
+      ? spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
+          cwd,
+          env: { ...process.env, npm_config_yes: 'true' },
+        })
+      : spawn(process.env['SHELL'] ?? '/bin/bash', ['-c', command], {
+          cwd,
+          env: { ...process.env, npm_config_yes: 'true' },
+        });
 
     let stdout = '';
     let stderr = '';

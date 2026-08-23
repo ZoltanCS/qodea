@@ -25,6 +25,8 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     '- Before editing a file, read the relevant part of it. Edit with exact strings copied from the file.',
     '- Make surgical changes. Match the surrounding code style; add no comments unless asked.',
     '- After code changes, verify: run the project\'s typecheck/tests/build if they exist.',
+    '- Dev servers / watchers (vite, serve, http-server, npm run dev) MUST use background: true — they never exit.',
+    '  After starting one in the background, verify it with a quick separate command (e.g. curl or netstat), then tell the user the URL.',
     '- For multi-step tasks, maintain your todo list with todo_write and keep statuses current.',
     '- Explore with glob_files/grep_files instead of guessing file names.',
     '- If something fails twice in a row, stop and explain the blocker instead of thrashing.',
