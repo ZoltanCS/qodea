@@ -4,3 +4,4 @@ packages:
 allowBuilds:
   esbuild: true
   electron: true
+  electron-winstaller: set this to true or false

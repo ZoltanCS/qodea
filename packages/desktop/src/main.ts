@@ -33,6 +33,13 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
 const uiDevUrl = 'http://localhost:5173';
+// In dev, dist/main.js → ../preload.cjs; packed, main.cjs sits next to preload.cjs.
+const preloadPath = app.isPackaged
+  ? path.join(__dirname, 'preload.cjs')
+  : path.join(__dirname, '../preload.cjs');
+const uiProdPath = app.isPackaged
+  ? path.join(__dirname, 'ui-dist', 'index.html')
+  : path.join(__dirname, '../../ui/dist/index.html');
 
 interface ActiveSession {
   abort: AbortController;
@@ -52,7 +59,7 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: 'Qodea',
     webPreferences: {
-      preload: path.join(__dirname, '../preload.cjs'),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -437,7 +444,7 @@ if (!gotLock) {
     if (isDev) {
       void loadDev(mainWindow);
     } else {
-      mainWindow.loadFile(path.join(__dirname, '../../ui/dist/index.html'));
+      mainWindow.loadFile(uiProdPath);
     }
   });
 

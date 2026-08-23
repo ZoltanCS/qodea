@@ -13,6 +13,9 @@ coverage/
 # local-only brand references (third-party assets — never publish)
 branding/reference/
 
+# packaged output
+release/
+
 # OS noise
 .DS_Store
 Thumbs.db

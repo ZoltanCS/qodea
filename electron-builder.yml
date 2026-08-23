@@ -1,0 +1,20 @@
+appId: dev.qodea.app
+productName: Qodea
+# keep in sync with packages/desktop devDependency
+electronVersion: 43.4.1
+directories:
+  app: packages/desktop/build
+  output: release
+files:
+  - "**/*"
+asar: true
+compression: maximum
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Qodea

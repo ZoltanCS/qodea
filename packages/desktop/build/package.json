@@ -1,0 +1,13 @@
+{
+  "name": "qodea",
+  "productName": "Qodea",
+  "version": "0.1.0",
+  "description": "Qodea — open-source agentic coder app",
+  "author": "Csala Zoltán",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "main.cjs",
+  "devDependencies": {
+    "electron": "^43.4.1"
+  }
+}
