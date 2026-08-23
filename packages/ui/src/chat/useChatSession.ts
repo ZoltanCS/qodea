@@ -25,6 +25,8 @@ export interface ChatItem {
   summary?: string;
   isError?: boolean;
   running?: boolean;
+  startedAt?: number;
+  durationMs?: number;
   requestId?: string;
   resolved?: boolean;
 }
@@ -182,12 +184,29 @@ export function useChatSession() {
               name: ev.name,
               summary: ev.summary,
               running: true,
+              startedAt: Date.now(),
             },
           ]);
           break;
         }
         case 'tool-result': {
-          patchLastToolByName(ev.name, { content: ev.content, isError: ev.isError });
+          setItems((prev) => {
+            for (let i = prev.length - 1; i >= 0; i--) {
+              const item = prev[i];
+              if (item && item.kind === 'tool' && item.name === ev.name && item.running) {
+                const copy = [...prev];
+                copy[i] = {
+                  ...item,
+                  content: ev.content,
+                  isError: ev.isError,
+                  running: false,
+                  durationMs: item.startedAt ? Date.now() - item.startedAt : undefined,
+                };
+                return copy;
+              }
+            }
+            return prev;
+          });
           if (ev.isError) flashMood('error');
           break;
         }

@@ -11,7 +11,13 @@ export type IconName =
   | 'about'
   | 'sun'
   | 'moon'
-  | 'gear';
+  | 'gear'
+  | 'terminal'
+  | 'file'
+  | 'filePlus'
+  | 'pen'
+  | 'search'
+  | 'list';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   // sliders / gear-ish for general
@@ -96,6 +102,46 @@ const PATHS: Record<IconName, React.ReactNode> = {
         fill="none"
         strokeLinejoin="round"
       />
+    </>
+  ),
+  terminal: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" fill="none" />
+      <path d="M7 9.5 L10.5 12.5 7 15.5 M12.5 16 H17" fill="none" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M13.5 3 H7 a1.8 1.8 0 0 0 -1.8 1.8 V19.2 A1.8 1.8 0 0 0 7 21 h10 a1.8 1.8 0 0 0 1.8 -1.8 V8.3 Z" fill="none" strokeLinejoin="round" />
+      <path d="M13.5 3 V8.3 H18.8" fill="none" strokeLinejoin="round" />
+    </>
+  ),
+  filePlus: (
+    <>
+      <path d="M13.5 3 H7 a1.8 1.8 0 0 0 -1.8 1.8 V19.2 A1.8 1.8 0 0 0 7 21 h10 a1.8 1.8 0 0 0 1.8 -1.8 V8.3 Z" fill="none" strokeLinejoin="round" />
+      <path d="M13.5 3 V8.3 H18.8 M12 12 v5 M9.5 14.5 h5" fill="none" strokeLinejoin="round" />
+    </>
+  ),
+  pen: (
+    <>
+      <path d="M15.5 4.5 l4 4 L8 20 H4 v-4 Z" fill="none" strokeLinejoin="round" />
+      <path d="M13.5 6.5 l4 4" fill="none" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" fill="none" />
+      <line x1="15.8" y1="15.8" x2="20.5" y2="20.5" />
+    </>
+  ),
+  list: (
+    <>
+      <line x1="9" y1="6.5" x2="19.5" y2="6.5" />
+      <line x1="9" y1="12" x2="19.5" y2="12" />
+      <line x1="9" y1="17.5" x2="19.5" y2="17.5" />
+      <circle cx="4.8" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.8" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.8" cy="17.5" r="1" fill="currentColor" stroke="none" />
     </>
   ),
 };

@@ -5,6 +5,7 @@ import { QodeaBot } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS, type ChatItem } from './chat/useChatSession';
 import { Sidebar } from './sidebar/Sidebar';
 import { Settings } from './settings/Settings';
+import { Icon, type IconName } from './ui/Icon';
 import { AvatarEditor } from './avatar/AvatarEditor';
 import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
 
@@ -321,19 +322,8 @@ function Row({
         </div>
       );
 
-    case 'tool': {
-      const cls = item.running ? ' run' : item.isError ? ' err' : '';
-      return (
-        <details className={`chip${cls}`}>
-          <summary>
-            <span className="dot">{item.running ? '●' : item.isError ? '✕' : '✓'}</span>
-            <code>{item.name}</code>
-            {item.summary && <span className="s">{item.summary}</span>}
-          </summary>
-          {item.content !== undefined && <pre>{item.content}</pre>}
-        </details>
-      );
-    }
+    case 'tool':
+      return <ToolCard item={item} />;
 
     case 'permission': {
       if (item.resolved) {
@@ -386,6 +376,80 @@ function Thinking({ text, live }: { text: string; live: boolean }) {
 function blockLinks(e: React.MouseEvent<HTMLDivElement>): void {
   const target = e.target as HTMLElement;
   if (target.tagName === 'A') e.preventDefault();
+}
+
+/* ── tool call card ───────────────────────────────────────────────────────── */
+
+const TOOL_META: Record<string, { verb: string; icon: IconName }> = {
+  read_file: { verb: 'Olvasás', icon: 'file' },
+  write_file: { verb: 'Írás', icon: 'filePlus' },
+  edit_file: { verb: 'Szerkesztés', icon: 'pen' },
+  glob_files: { verb: 'Fájlkeresés', icon: 'search' },
+  grep_files: { verb: 'Keresés', icon: 'search' },
+  bash: { verb: 'Parancs', icon: 'terminal' },
+  todo_write: { verb: 'Teendők', icon: 'list' },
+};
+
+function toolArgs(name: string, summary?: string): string {
+  if (!summary) return '';
+  if (name === 'bash') {
+    const stripped = summary.replace(/^run\s+`?/, '').replace(/`$/, '');
+    return stripped.length > 80 ? `${stripped.slice(0, 80)}…` : stripped;
+  }
+  const sp = summary.indexOf(' ');
+  const rest = sp > -1 ? summary.slice(sp + 1) : '';
+  return rest.length > 70 ? `${rest.slice(0, 70)}…` : rest;
+}
+
+function ToolCard({ item }: { item: ChatItem }) {
+  const [copied, setCopied] = useState(false);
+  const meta = TOOL_META[item.name ?? ''] ?? { verb: 'Eszköz', icon: 'terminal' as IconName };
+  const state = item.running ? 'run' : item.isError ? 'err' : 'ok';
+  const argText = toolArgs(item.name ?? '', item.summary);
+
+  const copy = async () => {
+    if (!item.content) return;
+    try {
+      await navigator.clipboard.writeText(item.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <details className={`tool-card ${state}`}>
+      <summary>
+        <span className={`tc-icon ${state}`}>
+          <Icon name={meta.icon} size={14} />
+        </span>
+        <span className="tc-verb">{item.running ? meta.verb : meta.verb}</span>
+        {argText && <code className="tc-arg">{argText}</code>}
+        <span className="tc-right">
+          {!item.running && typeof item.durationMs === 'number' && (
+            <span className="tc-dur">{(item.durationMs / 1000).toFixed(1)} s</span>
+          )}
+          {item.running ? (
+            <span className="spin" aria-label="fut" />
+          ) : (
+            <span className={`tc-dot ${item.isError ? 'e' : 'ok'}`} />
+          )}
+        </span>
+        <svg className="chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <path d="M8 10 L16 10 L12 15 Z" strokeLinejoin="round" />
+        </svg>
+      </summary>
+      {item.content !== undefined && item.content.length > 0 && (
+        <div className="tc-body">
+          <button className="tc-copy" onClick={() => void copy()}>
+            {copied ? 'Kimásolva' : 'Másolás'}
+          </button>
+          <pre>{item.content}</pre>
+        </div>
+      )}
+    </details>
+  );
 }
 
 /* ── segmented control ────────────────────────────────────────────────────── */
