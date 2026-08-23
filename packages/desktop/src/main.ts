@@ -8,6 +8,7 @@ import {
   loadConfig,
   PROVIDER_PRESETS,
   runAgent,
+  runAgentAuto,
   configSchema,
   type AgentEvent,
   type AgentRunOptions,
@@ -114,7 +115,7 @@ interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
-  uiMode?: 'agent' | 'experts';
+  uiMode?: 'agent' | 'experts' | 'autonomous';
   history?: TurnMessage[];
 }
 
@@ -194,22 +195,42 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         model: runModel,
         task: req.task,
         cwd: req.cwd,
-        mode: req.mode,
+        mode: req.uiMode === 'autonomous' ? 'yolo' : req.mode,
         asker,
         signal: abort.signal,
       };
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
       if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
-      options.systemSuffix =
-        req.uiMode === 'experts'
-          ? '\n\nMulti-agent mode is available: you have a spawn_agent tool and specialist sub-agents ' +
-            '(explorer, worker, reviewer, planner, tester). Prefer orchestrating: plan the work, then ' +
-            'delegate parallel, self-contained subtasks to suitable specialists with clear Hungarian ' +
-            'display names, and synthesize their reports for the user. Keep each instruction complete — ' +
-            'sub-agents cannot see this conversation.'
-          : undefined;
 
-      const iterator = runAgent(options);
+      if (req.uiMode === 'autonomous') {
+        // FULL AUTONOMY: hours-long run, auto-restart on errors, stall watchdog.
+        // The only exit: [DONE] marker, wall clock, restart limits, or user Stop.
+        options.systemSuffix =
+          '\n\nYou are running in FULL AUTONOMOUS mode. Drive the task forward continuously ' +
+          'without asking for confirmation. Work in focused cycles: act → verify → next step. ' +
+          'If something fails, diagnose and retry a different approach — never repeat a failed one. ' +
+          'When the ENTIRE goal is complete AND verified, end your final message with the single line: [DONE]';
+      } else {
+        options.systemSuffix =
+          req.uiMode === 'experts'
+            ? '\n\nMulti-agent mode is available: you have a spawn_agent tool and specialist sub-agents ' +
+              '(explorer, worker, reviewer, planner, tester, netlord). Prefer orchestrating: plan the work, then ' +
+              'delegate parallel, self-contained subtasks to suitable specialists with clear Hungarian ' +
+              'display names, and synthesize their reports for the user. Keep each instruction complete — ' +
+              'sub-agents cannot see this conversation.'
+            : undefined;
+      }
+
+      const iterator =
+        req.uiMode === 'autonomous'
+          ? runAgentAuto({
+              ...options,
+              wallClockMs: 8 * 3600_000,
+              stallTimeoutMs: 600_000,
+              maxRestarts: 60,
+              restartBaseDelayMs: 1500,
+            })
+          : runAgent(options);
 
       while (true) {
         const { value, done } = await iterator.next();

@@ -510,11 +510,17 @@ function ProvidersEditor(props: {
 function AgentsTab() {
   const initial = loadPrefs();
   const [mode, setMode] = useState<PermissionMode>(initial.mode ?? 'default');
-  const [uiMode, setUiModeState] = useState<'agent' | 'experts'>(initial.uiMode ?? 'agent');
+  const [uiMode, setUiModeState] = useState<'agent' | 'experts' | 'autonomous'>(
+    initial.uiMode ?? 'agent',
+  );
   const [effort, setEffort] = useState<'low' | 'medium' | 'high'>(initial.effort ?? 'medium');
   const [yoloHint, setYoloHint] = useState(mode === 'yolo');
 
-  const apply = (next: { mode?: PermissionMode; uiMode?: 'agent' | 'experts'; effort?: 'low' | 'medium' | 'high' }) => {
+  const apply = (next: {
+    mode?: PermissionMode;
+    uiMode?: 'agent' | 'experts' | 'autonomous';
+    effort?: 'low' | 'medium' | 'high';
+  }) => {
     const merged = {
       mode: next.mode ?? mode,
       uiMode: next.uiMode ?? uiMode,

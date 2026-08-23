@@ -724,6 +724,14 @@ body {
 .seg.mode button.on { background: #1d2735; color: #cfe0f5; }
 .seg.effort button.on { background: #24203a; color: #cabdf5; }
 .seg.uimode button.on { background: #1f2b1f; color: #a9d9a4; }
+.auto-hint {
+  font-size: 10.5px;
+  color: #d19a3d;
+  border: 1px dashed rgba(209, 154, 61, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .seg button.yolo.on { background: #331310; color: #ff9d8f; }
 
 :root[data-theme='light'] .seg.mode button.on { background: #dde7f3; color: #24354d; }

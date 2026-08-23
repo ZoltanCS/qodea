@@ -27,7 +27,9 @@ export type AgentEvent =
   | ({ type: 'tool-result'; name: string; content: string; isError: boolean } & EvTag)
   | ({ type: 'permission-denied'; name: string; summary: string } & EvTag)
   | ({ type: 'usage'; inputTokens?: number; outputTokens?: number } & EvTag)
-  | ({ type: 'done'; reason: 'complete' | 'max-turns' | 'aborted'; turns: number } & EvTag)
+  | ({ type: 'done'; reason: 'complete' | 'max-turns' | 'aborted' | 'failed' | 'time-limit'; turns: number } & EvTag)
+  | ({ type: 'auto-restart'; attempt: number; reason: string; delayMs: number } & EvTag)
+  | ({ type: 'auto-note'; text: string } & EvTag)
   | {
       type: 'subagent-start';
       agentId: string;
@@ -74,7 +76,7 @@ export interface AgentRunOptions {
 }
 
 export interface AgentRunResult {
-  reason: 'complete' | 'max-turns' | 'aborted';
+  reason: 'complete' | 'max-turns' | 'aborted' | 'failed' | 'time-limit';
   turns: number;
   state: AgentState;
   /** Full transcript including this run — feed it back as initialMessages to continue. */

@@ -65,7 +65,9 @@ export function useChatSession() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [uiMode, setUiModeState] = useState<'agent' | 'experts'>(initialPrefs.uiMode ?? 'agent');
+  const [uiMode, setUiModeState] = useState<'agent' | 'experts' | 'autonomous'>(
+    initialPrefs.uiMode ?? 'agent',
+  );
 
   // ── multi-agent state ──
   const [deployedAgents, setDeployedAgents] = useState<DeployedAgent[]>([]);
@@ -350,6 +352,25 @@ export function useChatSession() {
         }
         case 'usage': {
           setTokensUsed((ev.inputTokens ?? 0) + (ev.outputTokens ?? 0));
+          break;
+        }
+        case 'auto-restart': {
+          setItems((prev) => [
+            ...prev,
+            {
+              kind: 'assistant',
+              id: nextId(),
+              text: `[AUTO] #${ev.attempt} újraindítás — ${ev.reason}. Folytatás ${Math.round(ev.delayMs / 1000)}s múlva.`,
+            },
+          ]);
+          break;
+        }
+        case 'auto-note': {
+          setItems((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.kind === 'assistant' && last.text?.startsWith('[AUTO]')) return prev;
+            return [...prev, { kind: 'assistant', id: nextId(), text: `[AUTO] ${ev.text}` }];
+          });
           break;
         }
         case 'session-done': {

@@ -25,7 +25,7 @@ export interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
-  uiMode?: 'agent' | 'experts';
+  uiMode?: 'agent' | 'experts' | 'autonomous';
   history?: unknown[];
 }
 

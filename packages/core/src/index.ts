@@ -66,4 +66,8 @@ export { PERSONAS, isPersonaId, type Persona, type PersonaId } from './agents/pe
 
 // ── agent ────────────────────────────────────────────────────────────────────
 export { runAgent, type AgentEvent, type AgentRunOptions, type AgentRunResult } from './agent/loop.js';
+export {
+  runAgentAuto,
+  type AutoLoopOptions,
+} from './agent/auto.js';
 export { buildSystemPrompt, type PromptContext } from './agent/prompt.js';
