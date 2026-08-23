@@ -404,8 +404,29 @@ function toolArgs(name: string, summary?: string): string {
 function ToolCard({ item }: { item: ChatItem }) {
   const [copied, setCopied] = useState(false);
   const meta = TOOL_META[item.name ?? ''] ?? { verb: 'Eszköz', icon: 'terminal' as IconName };
-  const state = item.running ? 'run' : item.isError ? 'err' : 'ok';
   const argText = toolArgs(item.name ?? '', item.summary);
+
+  // ── running: fixed open card, no toggle — just shows it is working ──
+  if (item.running) {
+    return (
+      <div className="tool-card run open">
+        <div className="tc-head">
+          <span className="tc-icon run">
+            <Icon name={meta.icon} size={14} />
+          </span>
+          <span className="tc-verb">{meta.verb}</span>
+          {argText && <code className="tc-arg">{argText}</code>}
+          <span className="tc-right">
+            <span className="spin" aria-label="fut" />
+            <span className="tc-runlabel">fut…</span>
+          </span>
+        </div>
+        <div className="tc-live">
+          <div className="shimmer" />
+        </div>
+      </div>
+    );
+  }
 
   const copy = async () => {
     if (!item.content) return;
@@ -419,22 +440,18 @@ function ToolCard({ item }: { item: ChatItem }) {
   };
 
   return (
-    <details className={`tool-card ${state}`}>
+    <details className={`tool-card ${item.isError ? 'err' : 'ok'}`}>
       <summary>
-        <span className={`tc-icon ${state}`}>
+        <span className={`tc-icon ${item.isError ? 'e' : 'ok'}`}>
           <Icon name={meta.icon} size={14} />
         </span>
-        <span className="tc-verb">{item.running ? meta.verb : meta.verb}</span>
+        <span className="tc-verb">{meta.verb}</span>
         {argText && <code className="tc-arg">{argText}</code>}
         <span className="tc-right">
-          {!item.running && typeof item.durationMs === 'number' && (
+          {typeof item.durationMs === 'number' && (
             <span className="tc-dur">{(item.durationMs / 1000).toFixed(1)} s</span>
           )}
-          {item.running ? (
-            <span className="spin" aria-label="fut" />
-          ) : (
-            <span className={`tc-dot ${item.isError ? 'e' : 'ok'}`} />
-          )}
+          <span className={`tc-dot ${item.isError ? 'e' : 'ok'}`} />
         </span>
         <svg className="chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <path d="M8 10 L16 10 L12 15 Z" strokeLinejoin="round" />

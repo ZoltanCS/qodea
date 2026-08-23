@@ -319,7 +319,8 @@ body {
 .tool-card.err { border-color: #4a2620; }
 .tool-card.ok { border-left: 2px solid #2e5c46; }
 
-.tool-card summary {
+.tool-card summary,
+.tool-card .tc-head {
   list-style: none;
   cursor: pointer;
   user-select: none;
@@ -332,6 +333,32 @@ body {
 }
 .tool-card summary::-webkit-details-marker { display: none; }
 .tool-card summary:hover { background: var(--hover); }
+
+/* running variant: fixed open, non-interactive */
+.tool-card.open { cursor: default; }
+.tool-card.open .tc-head { cursor: default; color: var(--text); }
+.tool-card.open:hover { background: transparent; }
+
+.tc-runlabel {
+  font-size: 11.5px;
+  color: #d78f3f;
+}
+
+.tc-live { padding: 0 12px 11px; }
+
+.shimmer {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--line) 25%, #d78f3f33 50%, var(--line) 75%);
+  background-size: 220% 100%;
+  animation: shimmer-slide 1.3s linear infinite;
+  overflow: hidden;
+}
+
+@keyframes shimmer-slide {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
 
 .tc-icon { display: flex; align-items: center; color: var(--faint); }
 .tc-icon.run { color: #d78f3f; animation: pulse 1s ease-in-out infinite; }
