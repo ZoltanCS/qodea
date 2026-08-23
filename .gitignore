@@ -15,6 +15,7 @@ branding/reference/
 
 # packaged output
 release/
+packages/desktop/build/
 
 # OS noise
 .DS_Store
