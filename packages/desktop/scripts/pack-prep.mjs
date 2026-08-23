@@ -25,6 +25,11 @@ await build({
   external: ['electron', 'playwright'],
   sourcemap: false,
   logLevel: 'silent',
+  banner: {
+    // CJS output has no import.meta — provide it before module code runs
+    js: 'var __import_meta_url = require("node:url").pathToFileURL(__filename).href;',
+  },
+  define: { 'import.meta.url': '__import_meta_url' },
 });
 
 console.log('[pack-prep] copying preload + ui + playwright…');
