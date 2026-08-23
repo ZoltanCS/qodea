@@ -211,6 +211,7 @@ export function App() {
             <label className="folder-line" title="Melyik projektben dolgozzon?">
               Projekt:{' '}
               <select
+                className="folder-select"
                 value={
                   chat.projects.some((p) => p.cwd === chat.cwd.trim()) || !chat.cwd.trim()
                     ? chat.cwd.trim()
