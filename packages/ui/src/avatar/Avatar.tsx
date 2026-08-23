@@ -26,6 +26,26 @@ const TAU = Math.PI * 2;
 
 type Pt = { x: number; y: number };
 
+/** Eye anchors per face — glasses align to THESE, never to fixed coordinates. */
+const EYE_ANCHORS: Record<AvatarCfg['face'], { l: Pt; r: Pt }> = {
+  neutral: { l: { x: 82, y: 96 }, r: { x: 122, y: 96 } },
+  attentive: { l: { x: 82, y: 91 }, r: { x: 122, y: 91 } },
+  surprised: { l: { x: 82, y: 94 }, r: { x: 122, y: 94 } },
+  excited: { l: { x: 82, y: 92 }, r: { x: 122, y: 92 } },
+  happy: { l: { x: 82, y: 94 }, r: { x: 122, y: 94 } },
+  laughing: { l: { x: 80, y: 91 }, r: { x: 124, y: 91 } },
+  angry: { l: { x: 82, y: 96 }, r: { x: 122, y: 96 } },
+  sad: { l: { x: 82, y: 97 }, r: { x: 122, y: 97 } },
+  scared: { l: { x: 79, y: 90 }, r: { x: 125, y: 90 } },
+  suspicious: { l: { x: 82, y: 96 }, r: { x: 122, y: 96 } },
+  confused: { l: { x: 80, y: 93 }, r: { x: 124, y: 101 } },
+  curious: { l: { x: 82, y: 88 }, r: { x: 122, y: 99 } },
+  proud: { l: { x: 82, y: 96 }, r: { x: 122, y: 96 } },
+  shy: { l: { x: 78, y: 102 }, r: { x: 118, y: 102 } },
+  unimpressed: { l: { x: 82, y: 95 }, r: { x: 122, y: 95 } },
+  sleepy: { l: { x: 82, y: 98 }, r: { x: 122, y: 98 } },
+};
+
 function pt(r: number, t: number): Pt {
   return { x: 100 + r * Math.cos(t), y: 100 + r * Math.sin(t) };
 }
@@ -278,7 +298,7 @@ export function Avatar({ cfg, size = 64, animate = false, glasses = false, sweat
         <path d={dAttr} fill={`url(#${gradId})`} />
         <g ref={trackRef}>
           <Face face={cfg.face} col={fCol} />
-          {glasses && <Glasses col={fCol} />}
+          {glasses && <GlassesFor face={cfg.face} col={fCol} />}
         </g>
         {sweat && <Sweat />}
       </g>
@@ -286,18 +306,41 @@ export function Avatar({ cfg, size = 64, animate = false, glasses = false, sweat
   );
 }
 
-/** Round research glasses — aligned to the eye line (cx 82 / cx 122), thin frames. */
-function Glasses({ col }: { col: string }) {
+/** Round wire glasses aligned to the face's actual eye anchors (rotation-aware). */
+function GlassesFor({ face, col }: { face: AvatarCfg['face']; col: string }) {
+  const a = EYE_ANCHORS[face];
+  if (!a) return null;
+  const rot = (Math.atan2(a.r.y - a.l.y, a.r.x - a.l.x) * 180) / Math.PI;
+  const LW = 36; // lens width
+  const LH = 23; // lens height
+
   return (
-    <g stroke={col} strokeWidth="3.4" strokeLinecap="round">
-      {/* lenses — centered exactly on the eyes */}
-      <rect x="63" y="81" width="38" height="24" rx="10" fill="rgba(255,255,255,0.14)" />
-      <rect x="103" y="81" width="38" height="24" rx="10" fill="rgba(255,255,255,0.14)" />
-      {/* bridge */}
-      <line x1="101" y1="91" x2="103" y2="91" />
-      {/* temples */}
-      <line x1="63" y1="89" x2="42" y2="83" />
-      <line x1="141" y1="89" x2="158" y2="83" />
+    <g stroke={col} strokeWidth="3.2" strokeLinecap="round">
+      <rect
+        x={a.l.x - LW / 2}
+        y={a.l.y - LH / 2}
+        width={LW}
+        height={LH}
+        rx={LH / 2.4}
+        fill="rgba(255,255,255,0.14)"
+        transform={`rotate(${rot} ${a.l.x} ${a.l.y})`}
+      />
+      <rect
+        x={a.r.x - LW / 2}
+        y={a.r.y - LH / 2}
+        width={LW}
+        height={LH}
+        rx={LH / 2.4}
+        fill="rgba(255,255,255,0.14)"
+        transform={`rotate(${rot} ${a.r.x} ${a.r.y})`}
+      />
+      {/* bridge between inner edges */}
+      <line
+        x1={a.l.x + Math.cos((rot * Math.PI) / 180) * (LW / 2)}
+        y1={a.l.y + Math.sin((rot * Math.PI) / 180) * (LW / 2)}
+        x2={a.r.x - Math.cos((rot * Math.PI) / 180) * (LW / 2)}
+        y2={a.r.y - Math.sin((rot * Math.PI) / 180) * (LW / 2)}
+      />
     </g>
   );
 }
