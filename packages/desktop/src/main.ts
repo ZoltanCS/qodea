@@ -21,26 +21,19 @@ import fsSync from 'node:fs';
 import os from 'node:os';
 
 // Main-process crash log — the packed app has no console, so errors land in a file.
-const MAIN_ERR_LOG = () => path.join(os.tmpdir(), 'qodea-main-errors.log');
-process.on('uncaughtException', (err) => {
+const MAIN_LOG = () => path.join(os.tmpdir(), 'qodea-main-errors.log');
+function appendMainLog(line: string): void {
   try {
-    fsSync.appendFileSync(
-      MAIN_ERR_LOG(),
-      `\n[${new Date().toISOString()}] uncaughtException: ${err.stack ?? String(err)}\n`,
-    );
+    fsSync.appendFileSync(MAIN_LOG(), `\n[${new Date().toISOString()}] ${line}`);
   } catch {
     /* ignore */
   }
+}
+process.on('uncaughtException', (err) => {
+  appendMainLog(`uncaughtException: ${err.stack ?? String(err)}`);
 });
 process.on('unhandledRejection', (reason) => {
-  try {
-    fsSync.appendFileSync(
-      MAIN_ERR_LOG(),
-      `\n[${new Date().toISOString()}] unhandledRejection: ${String(reason)}\n`,
-    );
-  } catch {
-    /* ignore */
-  }
+  appendMainLog(`unhandledRejection: ${String(reason)}`);
 });
 import { qodeaDir } from '@qodea/core';
 import {
@@ -97,8 +90,16 @@ function createWindow(): BrowserWindow {
   win.webContents.on('render-process-gone', (_e, details) => {
     console.error('[qodea] render-process-gone:', JSON.stringify(details));
   });
+  win.webContents.on('did-finish-load', () => {
+    void win.webContents
+      .executeJavaScript('document.body.innerHTML.length')
+      .then((len: number) => appendMainLog(`did-finish-load url=${win.webContents.getURL()} bodyLen=${len}`))
+      .catch((e: unknown) =>
+        appendMainLog(`did-finish-load probe failed: ${e instanceof Error ? e.message : String(e)}`),
+      );
+  });
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
-    console.error(`[qodea] did-fail-load ${code} ${desc} ${url}`);
+    appendMainLog(`did-fail-load ${code} ${desc} ${url}`);
   });
   type ConsoleArgs = [
     event: { message?: string; sourceId?: string; lineNumber?: number } | number,
