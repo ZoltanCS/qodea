@@ -202,7 +202,11 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
       options.systemSuffix =
         req.uiMode === 'experts'
-          ? '\n\nExpert mode: before acting, silently consider the task from multiple specialist perspectives (architect, implementer, reviewer) and pick the strongest plan.'
+          ? '\n\nMulti-agent mode is available: you have a spawn_agent tool and specialist sub-agents ' +
+            '(explorer, worker, reviewer, planner, tester). Prefer orchestrating: plan the work, then ' +
+            'delegate parallel, self-contained subtasks to suitable specialists with clear Hungarian ' +
+            'display names, and synthesize their reports for the user. Keep each instruction complete — ' +
+            'sub-agents cannot see this conversation.'
           : undefined;
 
       const iterator = runAgent(options);

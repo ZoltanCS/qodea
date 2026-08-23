@@ -10,17 +10,40 @@ import type {
 } from '../types.js';
 import { userMessage } from '../types.js';
 import { buildSystemPrompt } from './prompt.js';
+import { createSpawnAgentTool } from '../agents/spawn.js';
+import { isAbortError, runAgentRef } from './ref.js';
+
+/** Optional tagging so subagent events can be routed in the UI. */
+export interface EvTag {
+  agentId?: string;
+}
 
 /** Events the agent loop emits — this is what the UI will subscribe to. */
 export type AgentEvent =
-  | { type: 'turn-start'; turn: number }
-  | { type: 'text-delta'; text: string }
-  | { type: 'reasoning-delta'; text: string }
-  | { type: 'tool-start'; callId: string; name: string; summary: string }
-  | { type: 'tool-result'; name: string; content: string; isError: boolean }
-  | { type: 'permission-denied'; name: string; summary: string }
-  | { type: 'usage'; inputTokens?: number; outputTokens?: number }
-  | { type: 'done'; reason: 'complete' | 'max-turns' | 'aborted'; turns: number };
+  | ({ type: 'turn-start'; turn: number } & EvTag)
+  | ({ type: 'text-delta'; text: string } & EvTag)
+  | ({ type: 'reasoning-delta'; text: string } & EvTag)
+  | ({ type: 'tool-start'; callId: string; name: string; summary: string } & EvTag)
+  | ({ type: 'tool-result'; name: string; content: string; isError: boolean } & EvTag)
+  | ({ type: 'permission-denied'; name: string; summary: string } & EvTag)
+  | ({ type: 'usage'; inputTokens?: number; outputTokens?: number } & EvTag)
+  | ({ type: 'done'; reason: 'complete' | 'max-turns' | 'aborted'; turns: number } & EvTag)
+  | {
+      type: 'subagent-start';
+      agentId: string;
+      name: string;
+      personaId: string;
+      color: string;
+      face: string;
+      task: string;
+    }
+  | {
+      type: 'subagent-done';
+      agentId: string;
+      name: string;
+      ok: boolean;
+      durationMs: number;
+    };
 
 export interface AgentRunOptions {
   provider: Provider;
@@ -42,6 +65,12 @@ export interface AgentRunOptions {
   /** Reasoning effort for thinking models. */
   reasoningEffort?: 'low' | 'medium' | 'high';
   signal?: AbortSignal;
+  /** Route tag for this run's events ('main' = untagged). */
+  agentId?: string;
+  /** Subagents are only available at depth 0 (flat hierarchy by design). */
+  depth?: number;
+  enableSubagents?: boolean;
+  maxParallelSpawns?: number;
 }
 
 export interface AgentRunResult {
@@ -54,10 +83,30 @@ export interface AgentRunResult {
 
 const DEFAULT_MAX_TURNS = 25;
 
+/** Public wrapper: tags events with agentId when this is a subagent run. */
+export async function* runAgent(
+  opts: AgentRunOptions,
+): AsyncGenerator<AgentEvent, AgentRunResult, unknown> {
+  const tag = opts.agentId && opts.agentId !== 'main' ? opts.agentId : undefined;
+  const gen = runAgentInner(opts);
+  if (!tag) {
+    for (;;) {
+      const n = await gen.next();
+      if (n.done) return n.value;
+      yield n.value;
+    }
+  }
+  for (;;) {
+    const n = await gen.next();
+    if (n.done) return n.value;
+    yield { ...n.value, agentId: tag } as AgentEvent;
+  }
+}
+
 /** The Qodea agent loop:
  *   task → LLM stream → tool calls → execute (with permissions) → feed results back → repeat.
  * Yields AgentEvents as it goes and resolves with the full transcript when finished. */
-export async function* runAgent(
+async function* runAgentInner(
   opts: AgentRunOptions,
 ): AsyncGenerator<AgentEvent, AgentRunResult, unknown> {
   const mode = opts.mode ?? 'default';
@@ -68,6 +117,24 @@ export async function* runAgent(
 
   const perms = new PermissionManager(mode, state, opts.asker ?? denyAll);
   const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
+
+  // ── subagent support (top level only) ──
+  const bus: AgentEvent[] = [];
+  const enableSubagents = (opts.enableSubagents ?? true) && !opts.depth;
+  if (enableSubagents) {
+    const spawnTool = createSpawnAgentTool({
+      provider: opts.provider,
+      model: opts.model,
+      cwd: opts.cwd,
+      mode,
+      ...(opts.asker ? { asker: opts.asker } : {}),
+      parentSignal: opts.signal,
+      publish: (ev) => bus.push(ev as AgentEvent),
+    });
+    tools.push(spawnTool);
+    toolByName.set(spawnTool.name, spawnTool);
+    specs.push(toSpec(spawnTool));
+  }
 
   const messages: TurnMessage[] = [
     {
@@ -141,14 +208,93 @@ export async function* runAgent(
 
     messages.push({ role: 'assistant', content: text, toolCalls: calls });
 
-    for (const call of calls) {
-      if (opts.signal?.aborted) {
+    // spawn_agent calls run in parallel; everything else stays sequential
+    const spawns = calls.filter((c) => c.name === 'spawn_agent');
+    const others = calls.filter((c) => c.name !== 'spawn_agent');
+
+    try {
+      for (const call of others) {
+        if (opts.signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+        const gen = withBus(executeToolCall(call, toolByName, perms, state, opts), bus);
+        let outcome: ToolOutcome | undefined;
+        for (;;) {
+          const { value, done } = await gen.next();
+          if (done) {
+            outcome = value as ToolOutcome;
+            break;
+          }
+          yield value as AgentEvent;
+        }
+        for (const ev of outcome!.events) yield ev;
+        messages.push(outcome!.message);
+      }
+
+      if (spawns.length > 0) {
+        const maxParallel = opts.maxParallelSpawns ?? 3;
+
+        // overflow calls fail fast without starting
+        for (const call of spawns.slice(maxParallel)) {
+          const content = `Spawn limit reached (${maxParallel} parallel). Run the rest in a later turn.`;
+          yield { type: 'tool-result', name: call.name, content, isError: true };
+          messages.push({
+            role: 'tool_result',
+            callId: call.id,
+            name: call.name,
+            content,
+            isError: true,
+          });
+        }
+
+        const pending = new Set<Promise<ToolOutcome>>();
+        const outcomes: Array<{ id: string; p: Promise<ToolOutcome> }> = [];
+        for (const call of spawns.slice(0, maxParallel)) {
+          if (opts.signal?.aborted) break;
+          const p = executeToolCall(call, toolByName, perms, state, opts);
+          outcomes.push({ id: call.id, p });
+          void p.finally(() => pending.delete(p)).catch(() => {});
+          pending.add(p);
+        }
+
+        // stream child events live until every spawned agent settles
+        while (pending.size > 0) {
+          await Promise.race([Promise.allSettled([...pending]), sleep(60)]);
+          for (const ev of bus.splice(0)) yield ev;
+        }
+        for (const ev of bus.splice(0)) yield ev;
+
+        // collect results in original order
+        for (const { id, p } of outcomes) {
+          try {
+            const outcome = await p;
+            yield* outcome.events;
+            messages.push(outcome.message);
+          } catch (err) {
+            const call = spawns.find((c) => c.id === id)!;
+            const content = isAbortError(err)
+              ? 'aborted'
+              : `spawn failed: ${err instanceof Error ? err.message : String(err)}`;
+            messages.push({
+              role: 'tool_result',
+              callId: id,
+              name: call.name,
+              content,
+              isError: true,
+            });
+            yield { type: 'tool-result', name: call.name, content, isError: true };
+          }
+        }
+      }
+    } catch (err) {
+      if (opts.signal?.aborted || isAbortError(err)) {
         yield { type: 'done', reason: 'aborted', turns: turn };
         return finish('aborted', turn);
       }
-      const outcome = await executeToolCall(call, toolByName, perms, state, opts);
-      for (const event of outcome.events) yield event;
-      messages.push(outcome.message);
+      throw err;
+    }
+
+    if (opts.signal?.aborted) {
+      yield { type: 'done', reason: 'aborted', turns: turn };
+      return finish('aborted', turn);
     }
 
     if (stop === 'length') {
@@ -242,13 +388,38 @@ function describeSafe(tool: Tool, args: Record<string, unknown>): string {
 
 const denyAll: PermissionAsker = async () => false;
 
-/** Recognizes abort/cancel exceptions from any provider SDK. */
-export function isAbortError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const e = err as { name?: string; message?: string };
-  return (
-    e.name === 'AbortError' ||
-    e.name === 'APIUserAbortError' ||
-    /abort|cancel/i.test(e.message ?? '')
-  );
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
+
+/** Wraps a tool promise: yields bus events live while it runs, returns its result. */
+async function* withBus<T>(
+  p: Promise<T>,
+  bus: AgentEvent[],
+): AsyncGenerator<AgentEvent, T, unknown> {
+  let settled = false;
+  let result: T = undefined as T;
+  let thrown: unknown;
+
+  const tracked = p.then(
+    (v) => {
+      settled = true;
+      result = v;
+    },
+    (e) => {
+      settled = true;
+      thrown = e;
+    },
+  );
+
+  while (!settled) {
+    await Promise.race([tracked, sleep(50)]);
+    for (const ev of bus.splice(0)) yield ev;
+  }
+  for (const ev of bus.splice(0)) yield ev;
+  if (thrown !== undefined) throw thrown;
+  return result;
+}
+
+// register the runtime reference so spawn.ts can launch child runs
+runAgentRef.current = runAgent;

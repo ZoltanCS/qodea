@@ -34,6 +34,17 @@ export interface ChatItem {
 let idCounter = 0;
 const nextId = () => `i${++idCounter}`;
 
+export interface DeployedAgent {
+  id: string;
+  name: string;
+  personaId: string;
+  color: string;
+  face: string;
+  task: string;
+  status: 'running' | 'done' | 'error';
+  startedAt: number;
+}
+
 export const MODES: Array<{ value: PermissionMode; label: string; hint: string }> = [
   { value: 'read-only', label: 'Read', hint: 'csak olvashat és tervezhet' },
   { value: 'default', label: 'Ask', hint: 'írás előtt kérdez' },
@@ -55,6 +66,15 @@ export function useChatSession() {
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [uiMode, setUiModeState] = useState<'agent' | 'experts'>(initialPrefs.uiMode ?? 'agent');
+
+  // ── multi-agent state ──
+  const [deployedAgents, setDeployedAgents] = useState<DeployedAgent[]>([]);
+  const [agentStreams, setAgentStreams] = useState<Record<string, ChatItem[]>>({});
+  const [openAgentTabs, setOpenAgentTabs] = useState<string[]>([]);
+  const [activeAgentTab, setActiveAgentTab] = useState<string>('list');
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  // ── multi-agent: deployed subagents + their live streams ──
   const [flash, setFlash] = useState<BotMood | null>(null);
   const [tokensUsed, setTokensUsed] = useState(0);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -149,6 +169,76 @@ export function useChatSession() {
 
   useEffect(() => {
     const unsub = window.qodea.onEvent((_sid, ev: WireEvent) => {
+      // route subagent events into their own streams
+      const agentId = (ev as { agentId?: string }).agentId;
+      if (agentId && agentId.startsWith('ag_')) {
+        switch (ev.type) {
+          case 'text-delta':
+          case 'reasoning-delta': {
+            const text = ev.text;
+            const isReasoning = ev.type === 'reasoning-delta';
+            setAgentStreams((prev) => {
+              const arr = prev[agentId] ?? [];
+              const last = arr[arr.length - 1];
+              if (last?.kind === 'assistant') {
+                const copyArr = arr.slice(0, -1);
+                if (isReasoning) {
+                  copyArr.push({ ...last, reasoning: (last.reasoning ?? '') + text });
+                } else {
+                  copyArr.push({ ...last, text: (last.text ?? '') + text });
+                }
+                return { ...prev, [agentId]: copyArr };
+              }
+              const fresh: ChatItem = isReasoning
+                ? { kind: 'assistant', id: nextId(), reasoning: text }
+                : { kind: 'assistant', id: nextId(), text };
+              return { ...prev, [agentId]: [...arr, fresh] };
+            });
+            break;
+          }
+          case 'tool-start': {
+            setAgentStreams((prev) => ({
+              ...prev,
+              [agentId]: [
+                ...(prev[agentId] ?? []),
+                {
+                  kind: 'tool',
+                  id: nextId(),
+                  name: ev.name,
+                  summary: ev.summary,
+                  running: true,
+                  startedAt: Date.now(),
+                },
+              ],
+            }));
+            break;
+          }
+          case 'tool-result': {
+            setAgentStreams((prev) => {
+              const arr = [...(prev[agentId] ?? [])];
+              for (let i = arr.length - 1; i >= 0; i--) {
+                const it = arr[i];
+                if (it?.kind === 'tool' && it.name === ev.name && it.running) {
+                  arr[i] = {
+                    ...it,
+                    content: ev.content,
+                    isError: ev.isError,
+                    running: false,
+                    durationMs: it.startedAt ? Date.now() - it.startedAt : undefined,
+                  };
+                  return { ...prev, [agentId]: arr };
+                }
+              }
+              return prev;
+            });
+            break;
+          }
+          default:
+            break;
+        }
+        return;
+      }
+
       switch (ev.type) {
         case 'reasoning-delta': {
           setItems((prev) => {
@@ -228,10 +318,40 @@ export function useChatSession() {
           setTokensUsed((ev.inputTokens ?? 0) + (ev.outputTokens ?? 0));
           break;
         }
+        case 'subagent-start': {
+          setDeployedAgents((prev) => [
+            ...prev,
+            {
+              id: ev.agentId,
+              name: ev.name,
+              personaId: ev.personaId,
+              color: ev.color,
+              face: ev.face,
+              task: ev.task,
+              status: 'running',
+              startedAt: Date.now(),
+            },
+          ]);
+          setPanelOpen(true);
+          break;
+        }
+        case 'subagent-done': {
+          setDeployedAgents((prev) =>
+            prev.map((a) =>
+              a.id === ev.agentId
+                ? { ...a, status: ev.ok ? ('done' as const) : ('error' as const) }
+                : a,
+            ),
+          );
+          break;
+        }
         case 'session-done': {
           setHistory(ev.messages as TurnMessage[]);
           setStatus('idle');
           void reloadSessions();
+          setDeployedAgents((prev) =>
+            prev.map((a) => (a.status === 'running' ? { ...a, status: 'done' as const } : a)),
+          );
           flashMood(ev.reason === 'complete' ? 'success' : 'error', 2600);
           break;
         }
@@ -337,6 +457,10 @@ export function useChatSession() {
     setSessionId(null);
     setTokensUsed(0);
     setErrorBanner(null);
+    setDeployedAgents([]);
+    setAgentStreams({});
+    setOpenAgentTabs([]);
+    setActiveAgentTab('list');
   }, [status]);
 
   const removeSession = useCallback(async (id: string) => {
@@ -416,5 +540,20 @@ export function useChatSession() {
     openSession,
     newChat,
     removeSession,
+    deployedAgents,
+    agentStreams,
+    openAgentTabs,
+    activeAgentTab,
+    setActiveAgentTab,
+    panelOpen,
+    setPanelOpen,
+    openAgentTab: (id: string) => {
+      setOpenAgentTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setActiveAgentTab(id);
+    },
+    closeAgentTab: (id: string) => {
+      setOpenAgentTabs((prev) => prev.filter((t) => t !== id));
+      setActiveAgentTab((cur) => (cur === id ? 'list' : cur));
+    },
   };
 }
