@@ -169,7 +169,40 @@ export function useChatSession() {
 
   useEffect(() => {
     const unsub = window.qodea.onEvent((_sid, ev: WireEvent) => {
-      // route subagent events into their own streams
+      // ── 1) subagent lifecycle: update deployed list (they carry ag_ ids too) ──
+      if (ev.type === 'subagent-start') {
+        setDeployedAgents((prev) =>
+          prev.some((a) => a.id === ev.agentId)
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: ev.agentId,
+                  name: ev.name,
+                  personaId: ev.personaId,
+                  color: ev.color,
+                  face: ev.face,
+                  task: ev.task,
+                  status: 'running' as const,
+                  startedAt: Date.now(),
+                },
+              ],
+        );
+        setPanelOpen(true);
+        return;
+      }
+      if (ev.type === 'subagent-done') {
+        setDeployedAgents((prev) =>
+          prev.map((a) =>
+            a.id === ev.agentId
+              ? { ...a, status: ev.ok ? ('done' as const) : ('error' as const) }
+              : a,
+          ),
+        );
+        return;
+      }
+
+      // ── 2) subagent stream events → route into that agent's own buffer ──
       const agentId = (ev as { agentId?: string }).agentId;
       if (agentId && agentId.startsWith('ag_')) {
         switch (ev.type) {
@@ -239,6 +272,7 @@ export function useChatSession() {
         return;
       }
 
+      // ── 3) main agent events ──
       switch (ev.type) {
         case 'reasoning-delta': {
           setItems((prev) => {
@@ -316,33 +350,6 @@ export function useChatSession() {
         }
         case 'usage': {
           setTokensUsed((ev.inputTokens ?? 0) + (ev.outputTokens ?? 0));
-          break;
-        }
-        case 'subagent-start': {
-          setDeployedAgents((prev) => [
-            ...prev,
-            {
-              id: ev.agentId,
-              name: ev.name,
-              personaId: ev.personaId,
-              color: ev.color,
-              face: ev.face,
-              task: ev.task,
-              status: 'running',
-              startedAt: Date.now(),
-            },
-          ]);
-          setPanelOpen(true);
-          break;
-        }
-        case 'subagent-done': {
-          setDeployedAgents((prev) =>
-            prev.map((a) =>
-              a.id === ev.agentId
-                ? { ...a, status: ev.ok ? ('done' as const) : ('error' as const) }
-                : a,
-            ),
-          );
           break;
         }
         case 'session-done': {

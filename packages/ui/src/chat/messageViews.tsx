@@ -120,6 +120,7 @@ const TOOL_META: Record<string, { verb: string; icon: Parameters<typeof Icon>[0]
   grep_files: { verb: 'Keresés', icon: 'search' },
   bash: { verb: 'Parancs', icon: 'terminal' },
   todo_write: { verb: 'Teendők', icon: 'list' },
+  spawn_agent: { verb: 'Al-agent indítása', icon: 'agents' },
 };
 
 function toolArgs(name: string, summary?: string): string {
