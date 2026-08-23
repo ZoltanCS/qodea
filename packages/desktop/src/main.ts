@@ -17,7 +17,31 @@ import {
   type TurnMessage,
 } from '@qodea/core';
 import { promises as fs } from 'node:fs';
+import fsSync from 'node:fs';
 import os from 'node:os';
+
+// Main-process crash log — the packed app has no console, so errors land in a file.
+const MAIN_ERR_LOG = () => path.join(os.tmpdir(), 'qodea-main-errors.log');
+process.on('uncaughtException', (err) => {
+  try {
+    fsSync.appendFileSync(
+      MAIN_ERR_LOG(),
+      `\n[${new Date().toISOString()}] uncaughtException: ${err.stack ?? String(err)}\n`,
+    );
+  } catch {
+    /* ignore */
+  }
+});
+process.on('unhandledRejection', (reason) => {
+  try {
+    fsSync.appendFileSync(
+      MAIN_ERR_LOG(),
+      `\n[${new Date().toISOString()}] unhandledRejection: ${String(reason)}\n`,
+    );
+  } catch {
+    /* ignore */
+  }
+});
 import { qodeaDir } from '@qodea/core';
 import {
   addProject,
