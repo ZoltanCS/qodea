@@ -14,7 +14,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "smoke": "turbo run smoke",
-    "dev": "turbo run dev"
+    "dev": "node scripts/dev.mjs"
   },
   "devDependencies": {
     "turbo": "^2.10.11",

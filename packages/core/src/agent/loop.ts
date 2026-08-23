@@ -94,29 +94,37 @@ export async function* runAgent(
     const calls: ToolCallReq[] = [];
     let stop: StopReason | undefined;
 
-    for await (const ev of opts.provider.streamChat({
-      model: opts.model,
-      messages,
-      tools: specs,
-      ...(opts.maxTokens !== undefined ? { maxTokens: opts.maxTokens } : {}),
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-      ...(opts.reasoningEffort ? { reasoningEffort: opts.reasoningEffort } : {}),
-      signal: opts.signal,
-    })) {
-      if (ev.type === 'text-delta') {
-        text += ev.text;
-        yield { type: 'text-delta', text: ev.text };
-      } else if (ev.type === 'reasoning-delta') {
-        // live thinking — surfaced to the UI, deliberately not stored in the transcript
-        yield { type: 'reasoning-delta', text: ev.text };
-      } else if (ev.type === 'tool-call') {
-        calls.push({ id: ev.id, name: ev.name, argumentsJson: ev.argumentsJson });
-      } else if (ev.type === 'usage') {
-        lastUsage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
-        yield { type: 'usage', inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
-      } else if (ev.type === 'done') {
-        stop = ev.stopReason;
+    try {
+      for await (const ev of opts.provider.streamChat({
+        model: opts.model,
+        messages,
+        tools: specs,
+        ...(opts.maxTokens !== undefined ? { maxTokens: opts.maxTokens } : {}),
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+        ...(opts.reasoningEffort ? { reasoningEffort: opts.reasoningEffort } : {}),
+        signal: opts.signal,
+      })) {
+        if (ev.type === 'text-delta') {
+          text += ev.text;
+          yield { type: 'text-delta', text: ev.text };
+        } else if (ev.type === 'reasoning-delta') {
+          // live thinking — surfaced to the UI, deliberately not stored in the transcript
+          yield { type: 'reasoning-delta', text: ev.text };
+        } else if (ev.type === 'tool-call') {
+          calls.push({ id: ev.id, name: ev.name, argumentsJson: ev.argumentsJson });
+        } else if (ev.type === 'usage') {
+          lastUsage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
+          yield { type: 'usage', inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
+        } else if (ev.type === 'done') {
+          stop = ev.stopReason;
+        }
       }
+    } catch (err) {
+      if (opts.signal?.aborted || isAbortError(err)) {
+        yield { type: 'done', reason: 'aborted', turns: turn };
+        return finish('aborted', turn);
+      }
+      throw err;
     }
 
     if (opts.signal?.aborted) {
@@ -134,6 +142,10 @@ export async function* runAgent(
     messages.push({ role: 'assistant', content: text, toolCalls: calls });
 
     for (const call of calls) {
+      if (opts.signal?.aborted) {
+        yield { type: 'done', reason: 'aborted', turns: turn };
+        return finish('aborted', turn);
+      }
       const outcome = await executeToolCall(call, toolByName, perms, state, opts);
       for (const event of outcome.events) yield event;
       messages.push(outcome.message);
@@ -229,3 +241,14 @@ function describeSafe(tool: Tool, args: Record<string, unknown>): string {
 }
 
 const denyAll: PermissionAsker = async () => false;
+
+/** Recognizes abort/cancel exceptions from any provider SDK. */
+export function isAbortError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { name?: string; message?: string };
+  return (
+    e.name === 'AbortError' ||
+    e.name === 'APIUserAbortError' ||
+    /abort|cancel/i.test(e.message ?? '')
+  );
+}
