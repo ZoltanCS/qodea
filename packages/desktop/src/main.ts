@@ -244,12 +244,21 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       {
         options.systemSuffix =
           req.uiMode === 'experts'
-            ? '\n\nMulti-agent mode is available: you have a spawn_agent tool and specialist sub-agents ' +
-              '(explorer, worker, reviewer, planner, tester, netlord). Prefer orchestrating: plan the work, then ' +
-              'delegate parallel, self-contained subtasks to suitable specialists with clear Hungarian ' +
-              'display names, and synthesize their reports for the user. Keep each instruction complete — ' +
-              'sub-agents cannot see this conversation.'
-            : undefined;
+            ? '\n\n## ROLE: ORCHESTRATOR (Experts mode)\n' +
+              'You are an ORCHESTRATOR, not a hands-on worker. HARD BANS on doing work yourself:\n' +
+              '- NEVER use write_file, edit_file, bash, web_search or web_fetch directly.\n' +
+              '- Your ONLY job: break the goal into self-contained subtasks and launch them via spawn_agent.\n' +
+              '- First turn: plan silently, then spawn the right specialists IN PARALLEL (e.g. explorer to ' +
+              'map the codebase + worker(s) to implement + tester to verify).\n' +
+              '- Give each sub-agent a short Hungarian display name and a COMPLETE instruction (they cannot ' +
+              'see this conversation).\n' +
+              '- When reports come back: delegate follow-ups (reviewer on changes, tester on verification, ' +
+              'fix workers on issues) until everything is done and verified.\n' +
+              '- Then synthesize a short final report for the user and end with [DONE].\n' +
+              'The ONLY exception: reading a file yourself to write a better sub-agent instruction.'
+            : '\n\nAutonomous mode: drive the task to completion. When parallel or specialist work helps ' +
+              '(research, implementation, review, QA), delegate via spawn_agent instead of doing everything ' +
+              'yourself. Never stop until the goal is fully done and verified.';
       }
 
       const iterator = runAgentAuto({
