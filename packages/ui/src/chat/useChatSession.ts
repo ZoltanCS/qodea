@@ -25,6 +25,7 @@ export interface ChatItem {
   summary?: string;
   isError?: boolean;
   running?: boolean;
+  queued?: boolean;
   startedAt?: number;
   durationMs?: number;
   requestId?: string;
@@ -287,6 +288,11 @@ export function useChatSession() {
 
       // ── 3) main agent events ──
       switch (ev.type) {
+        case 'turn-start': {
+          // queued messages have been injected into the transcript
+          setItems((prev) => prev.map((it) => (it.queued ? { ...it, queued: false } : it)));
+          break;
+        }
         case 'reasoning-delta': {
           setItems((prev) => {
             const last = prev[prev.length - 1];
@@ -419,7 +425,18 @@ export function useChatSession() {
   const send = useCallback(
     async (task: string) => {
       const trimmed = task.trim();
-      if (!trimmed || status === 'running') return;
+      if (!trimmed) return;
+
+      // ── agent already running → queue the message for the next turn ──
+      if (status === 'running') {
+        if (!sessionId) return;
+        setItems((prev) => [
+          ...prev,
+          { kind: 'user', id: nextId(), text: trimmed, queued: true },
+        ]);
+        void window.qodea.sendMessage(sessionId, trimmed);
+        return;
+      }
 
       setErrorBanner(null);
       setItems((prev) => [...prev, { kind: 'user', id: nextId(), text: trimmed }]);

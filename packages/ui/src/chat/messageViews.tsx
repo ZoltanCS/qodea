@@ -15,6 +15,7 @@ export interface ChatItem {
   summary?: string;
   isError?: boolean;
   running?: boolean;
+  queued?: boolean;
   startedAt?: number;
   durationMs?: number;
   requestId?: string;
@@ -35,7 +36,10 @@ export function Row({
     case 'user':
       return (
         <div className="row user">
-          <div className="u-bubble">{item.text}</div>
+          <div className={`u-bubble${item.queued ? ' q' : ''}`}>
+            {item.text}
+            {item.queued && <span className="q-tag">· sorban</span>}
+          </div>
         </div>
       );
 

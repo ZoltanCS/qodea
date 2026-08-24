@@ -34,15 +34,18 @@ export function App() {
   }, [theme]);
 
   const submit = useCallback(() => {
-    if (!draft.trim() || chat.status === 'running') return;
+    if (!draft.trim()) return;
     const task = draft;
     setDraft('');
     void chat.send(task);
   }, [draft, chat]);
 
+  // smart autoscroll: follow the stream only while the user is near the bottom
   useEffect(() => {
     const el = streamRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [chat.items]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -94,9 +97,12 @@ export function App() {
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={
-          running ? 'Qodea dolgozik…' : showHome ? 'Írd le a feladatot…' : 'Feladat leírása…'
+          running
+            ? 'Üzenet a futó agentnek… (Enter = sorba áll)'
+            : showHome
+              ? 'Írd le a feladatot…'
+              : 'Feladat leírása…'
         }
-        disabled={running}
         rows={showHome ? 3 : 2}
         autoFocus
       />
@@ -135,15 +141,19 @@ export function App() {
           onClick={() => chat.openUsageTab()}
         />
 
-        {running ? (
+        {running && (
           <button className="send stop" onClick={() => void chat.stop()} title="Leállítás">
             Stop
           </button>
-        ) : (
-          <button className="send" onClick={submit} disabled={!draft.trim()} title="Küldés (Enter)">
-            ↑
-          </button>
         )}
+        <button
+          className="send"
+          onClick={submit}
+          disabled={!draft.trim()}
+          title={running ? 'Sorba állítás (Enter)' : 'Küldés (Enter)'}
+        >
+          ↑
+        </button>
       </div>
     </div>
   );

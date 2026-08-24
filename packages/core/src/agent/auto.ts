@@ -1,5 +1,6 @@
 import { emptyAgentState } from '../tools/types.js';
 import { runAgent, type AgentEvent, type AgentRunOptions, type AgentRunResult } from './loop.js';
+import { userMessage } from '../types.js';
 import type { TurnMessage } from '../types.js';
 import { isAbortError } from './ref.js';
 
@@ -24,6 +25,8 @@ export interface AutoLoopOptions extends Omit<AgentRunOptions, 'initialMessages'
   maxRestarts?: number;
   /** Base delay for exponential backoff between error-restarts. */
   restartBaseDelayMs?: number;
+  /** Same mutable queue passed through to every attempt. */
+  injectQueue?: { items: string[] };
 }
 
 interface AttemptOutcome {
@@ -133,6 +136,7 @@ export async function* runAgentAuto(
             : {}),
           signal: attemptAc.signal,
           maxTurns: ATTEMPT_MAX_TURNS,
+          ...(opts.injectQueue ? { injectQueue: opts.injectQueue } : {}),
           ...(messages.length > 0 ? { initialMessages: messages } : {}),
         };
 
@@ -184,6 +188,18 @@ export async function* runAgentAuto(
           [...result.messages]
             .reverse()
             .find((m) => m.role === 'assistant' && m.content.trim())?.content ?? '';
+
+        // queued user messages override a [DONE] — new work arrived
+        if (opts.injectQueue && opts.injectQueue.items.length > 0) {
+          for (const text of opts.injectQueue.items.splice(0)) {
+            messages.push(userMessage(text));
+          }
+          yield {
+            type: 'auto-note',
+            text: `Új üzenet érkezett (${attempt}. forduló után) — folytatás…`,
+          };
+          break attempt_loop;
+        }
 
         if (DONE_RE.test(finalText)) {
           yield { type: 'done', reason: 'complete', turns: attempt };

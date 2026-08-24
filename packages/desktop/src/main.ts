@@ -61,6 +61,7 @@ const uiProdPath = app.isPackaged
 interface ActiveSession {
   abort: AbortController;
   pendingAsks: Map<string, (approved: boolean) => void>;
+  injectQueue: { items: string[] };
 }
 
 const sessions = new Map<string, ActiveSession>();
@@ -193,7 +194,8 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
   const sessionId = storeId;
   const abort = new AbortController();
   const pendingAsks = new Map<string, (approved: boolean) => void>();
-  sessions.set(sessionId, { abort, pendingAsks });
+  const injectQueue = { items: [] as string[] };
+  sessions.set(sessionId, { abort, pendingAsks, injectQueue });
 
   // permission asker bridges into the renderer as an event + response channel
   let askCounter = 0;
@@ -232,6 +234,7 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         mode: req.mode,
         asker,
         signal: abort.signal,
+        injectQueue,
         agents,
       };
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
@@ -476,6 +479,10 @@ function registerIpc(win: () => BrowserWindow): void {
 
   ipcMain.handle('qodea:stop', (_event, sessionId: string) => {
     sessions.get(sessionId)?.abort.abort();
+  });
+
+  ipcMain.handle('qodea:sendMessage', (_event, payload: { sessionId: string; text: string }) => {
+    sessions.get(payload.sessionId)?.injectQueue.items.push(payload.text);
   });
 }
 

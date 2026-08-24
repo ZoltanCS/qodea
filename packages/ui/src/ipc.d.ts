@@ -131,6 +131,7 @@ declare global {
       startSession(req: StartRequest): Promise<{ sessionId: string }>;
       respondPermission(sessionId: string, requestId: string, approved: boolean): Promise<void>;
       stopSession(sessionId: string): Promise<void>;
+      sendMessage(sessionId: string, text: string): Promise<void>;
       onEvent(callback: (sessionId: string, event: WireEvent) => void): () => void;
     };
   }

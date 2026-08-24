@@ -12,6 +12,7 @@ import { userMessage } from '../types.js';
 import { buildSystemPrompt } from './prompt.js';
 import { createSpawnAgentTool } from '../agents/spawn.js';
 import type { AgentDef } from '../agents/personas.js';
+import { BUILTIN_AGENTS } from '../agents/personas.js';
 import { isAbortError, runAgentRef } from './ref.js';
 
 /** Optional tagging so subagent events can be routed in the UI. */
@@ -74,6 +75,8 @@ export interface AgentRunOptions {
   agents?: AgentDef[];
   /** Subagents are only available at depth 0 (flat hierarchy by design). */
   depth?: number;
+  /** Mutable queue — user messages typed mid-run get injected at turn boundaries. */
+  injectQueue?: { items: string[] };
   enableSubagents?: boolean;
   maxParallelSpawns?: number;
 }
@@ -126,7 +129,11 @@ async function* runAgentInner(
   // ── subagent support (top level only) ──
   const bus: AgentEvent[] = [];
   const enableSubagents = (opts.enableSubagents ?? true) && !opts.depth;
-  const effectiveAgents = opts.agents ?? [];
+  // fallback to built-ins so spawning ALWAYS works, even if the host forgot the list
+  const effectiveAgents =
+    opts.agents && opts.agents.length > 0 ? opts.agents : BUILTIN_AGENTS;
+  // user messages typed while the agent runs — injected at turn boundaries
+  const injectQueue = opts.injectQueue;
   if (enableSubagents && effectiveAgents.length > 0) {
     const spawnTool = createSpawnAgentTool({
       provider: opts.provider,
@@ -142,6 +149,15 @@ async function* runAgentInner(
     toolByName.set(spawnTool.name, spawnTool);
     specs.push(toSpec(spawnTool));
   }
+
+  // ── user message injection (typed while running) ──
+  const drainInjects = () => {
+    if (injectQueue && injectQueue.items.length > 0) {
+      for (const text of injectQueue.items.splice(0)) {
+        messages.push(userMessage(text));
+      }
+    }
+  };
 
   const messages: TurnMessage[] = [
     {
@@ -162,6 +178,7 @@ async function* runAgentInner(
   ): AgentRunResult => ({ reason, turns, state, messages });
 
   for (let turn = 1; turn <= maxTurns; turn++) {
+    drainInjects();
     yield { type: 'turn-start', turn };
 
     let text = '';
@@ -222,7 +239,9 @@ async function* runAgentInner(
     try {
       for (const call of others) {
         if (opts.signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
-        const gen = withBus(executeToolCall(call, toolByName, perms, state, opts), bus);
+        const gen = withBus(executeToolCall(call, toolByName, perms, state, opts), bus, () =>
+          drainInjects(),
+        );
         let outcome: ToolOutcome | undefined;
         for (;;) {
           const { value, done } = await gen.next();
@@ -266,6 +285,7 @@ async function* runAgentInner(
         while (pending.size > 0) {
           await Promise.race([Promise.allSettled([...pending]), sleep(60)]);
           for (const ev of bus.splice(0)) yield ev;
+          drainInjects();
         }
         for (const ev of bus.splice(0)) yield ev;
 
@@ -403,6 +423,7 @@ function sleep(ms: number): Promise<void> {
 async function* withBus<T>(
   p: Promise<T>,
   bus: AgentEvent[],
+  onPoll?: () => void,
 ): AsyncGenerator<AgentEvent, T, unknown> {
   let settled = false;
   let result: T = undefined as T;
@@ -422,6 +443,7 @@ async function* withBus<T>(
   while (!settled) {
     await Promise.race([tracked, sleep(50)]);
     for (const ev of bus.splice(0)) yield ev;
+    onPoll?.();
   }
   for (const ev of bus.splice(0)) yield ev;
   if (thrown !== undefined) throw thrown;

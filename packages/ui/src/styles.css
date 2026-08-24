@@ -1425,3 +1425,11 @@ body {
   color: var(--dim); background: var(--panel); font-family: ui-monospace, Consolas, monospace;
 }
 .tool-check.on { color: var(--text); border-color: #4e7cc2; background: rgba(90,130,190,0.1); }
+
+/* queued user message */
+.u-bubble.q {
+  opacity: 0.8;
+  border: 1px dashed var(--line-soft);
+  background: transparent;
+}
+.q-tag { font-size: 10px; color: var(--faint); margin-left: 6px; }
