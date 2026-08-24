@@ -25,9 +25,11 @@ export interface ChatItem {
 export function Row({
   item,
   onRespond,
+  onOpenFile,
 }: {
   item: ChatItem;
   onRespond?: (requestId: string, approved: boolean) => void;
+  onOpenFile?: (title: string, content: string) => void;
 }) {
   switch (item.kind) {
     case 'user':
@@ -50,7 +52,7 @@ export function Row({
       );
 
     case 'tool':
-      return <ToolCard item={item} />;
+      return <ToolCard item={item} onOpenFile={onOpenFile} />;
 
     case 'permission': {
       if (item.resolved) {
@@ -143,7 +145,13 @@ function toolArgs(name: string, summary?: string): string {
   return rest.length > 70 ? `${rest.slice(0, 70)}…` : rest;
 }
 
-export function ToolCard({ item }: { item: ChatItem }) {
+export function ToolCard({
+  item,
+  onOpenFile,
+}: {
+  item: ChatItem;
+  onOpenFile?: (title: string, content: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [, tick] = useState(0);
   const meta =
@@ -219,6 +227,17 @@ export function ToolCard({ item }: { item: ChatItem }) {
       </summary>
       {item.content !== undefined && item.content.length > 0 && (
         <div className="tc-body">
+          {onOpenFile && (
+            <button
+              className="tc-copy"
+              style={{ right: 84 }}
+              onClick={() =>
+                onOpenFile(item.summary ?? item.name ?? 'fájl', item.content ?? '')
+              }
+            >
+              Panel
+            </button>
+          )}
           <button className="tc-copy" onClick={() => void copy()}>
             {copied ? 'Kimásolva' : 'Másolás'}
           </button>

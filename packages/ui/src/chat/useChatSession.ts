@@ -34,6 +34,13 @@ export interface ChatItem {
 let idCounter = 0;
 const nextId = () => `i${++idCounter}`;
 
+export interface ExtraTab {
+  id: string;
+  title: string;
+  kind: 'usage' | 'file';
+  content?: string;
+}
+
 export interface DeployedAgent {
   id: string;
   name: string;
@@ -76,6 +83,9 @@ export function useChatSession() {
   const [openAgentTabs, setOpenAgentTabs] = useState<string[]>([]);
   const [activeAgentTab, setActiveAgentTab] = useState<string>('list');
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // ── whiteboard tabs (usage / file preview / …) ──
+  const [extraTabs, setExtraTabs] = useState<Array<{ id: string; title: string; kind: 'usage' | 'file'; content?: string }>>([]);
 
   // ── multi-agent: deployed subagents + their live streams ──
   const [flash, setFlash] = useState<BotMood | null>(null);
@@ -587,6 +597,28 @@ export function useChatSession() {
     setActiveAgentTab,
     panelOpen,
     setPanelOpen,
+    extraTabs,
+    openUsageTab: () => {
+      setExtraTabs((prev) =>
+        prev.some((t) => t.id === 'usage') ? prev : [...prev, { id: 'usage', title: 'Usage', kind: 'usage' as const }],
+      );
+      setPanelOpen(true);
+      setActiveAgentTab('usage');
+    },
+    openFileTab: (title: string, content: string) => {
+      const id = `file:${Date.now()}`;
+      setExtraTabs((prev) => [...prev, { id, title, kind: 'file' as const, content }]);
+      setPanelOpen(true);
+      setActiveAgentTab(id);
+    },
+    closePanelTab: (id: string) => {
+      if (id.startsWith('ag_')) {
+        setOpenAgentTabs((prev) => prev.filter((t) => t !== id));
+      } else {
+        setExtraTabs((prev) => prev.filter((t) => t.id !== id));
+      }
+      setActiveAgentTab((cur) => (cur === id ? 'list' : cur));
+    },
     openAgentTab: (id: string) => {
       setOpenAgentTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
       setActiveAgentTab(id);

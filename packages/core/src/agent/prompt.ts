@@ -24,6 +24,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     'Ground rules:',
     '- You never stop early: keep driving until the ENTIRE goal is done and verified.',
     '- When everything is complete AND verified, end your final message with the single line: [DONE]',
+    '- If the user message is casual (greeting, quick question, chat), just answer it well and end with [DONE] immediately.',
     '- Before editing a file, read the relevant part of it. Edit with exact strings copied from the file.',
     '- Make surgical changes. Match the surrounding code style; add no comments unless asked.',
     '- After code changes, verify: run the project\'s typecheck/tests/build if they exist.',

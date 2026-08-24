@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { QodeaBot } from './mascot/QodeaBot';
+import { QodeaBot, type BotMood } from './mascot/QodeaBot';
 import { useChatSession, MODES, EFFORTS } from './chat/useChatSession';
 import { Row } from './chat/messageViews';
 import { Sidebar } from './sidebar/Sidebar';
@@ -54,6 +54,21 @@ export function App() {
 
   const running = chat.status === 'running';
   const showHome = !running && chat.items.length === 0 && !chat.activeSessionId;
+
+  // hero mascot random micro-animations — the little guy keeps himself busy
+  const [heroMood, setHeroMood] = useState<BotMood>('idle');
+  useEffect(() => {
+    if (!showHome) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const fire = () => {
+      const opts: BotMood[] = ['working', 'waiting', 'thinking', 'working'];
+      setHeroMood(opts[Math.floor(Math.random() * opts.length)]!);
+      setTimeout(() => setHeroMood('idle'), 1500);
+      timer = setTimeout(fire, 6000 + Math.random() * 9000);
+    };
+    timer = setTimeout(fire, 4000 + Math.random() * 4000);
+    return () => clearTimeout(timer);
+  }, [showHome]);
   const runningAgents = chat.deployedAgents.filter((a) => a.status === 'running').length;
 
   const projectLabel = (() => {
@@ -117,6 +132,7 @@ export function App() {
           used={chat.tokensUsed}
           max={chat.contextWindow}
           model={chat.model || chat.selectedProvider?.defaultModel || ''}
+          onClick={() => chat.openUsageTab()}
         />
 
         {running ? (
@@ -202,7 +218,7 @@ export function App() {
 
         {showHome ? (
           <div className="home">
-            <QodeaBot mood="idle" color="cream" size={86} />
+            <QodeaBot mood={heroMood} color="cream" size={86} />
             <h1>Több mint chat. Megcsinálja.</h1>
             <p className="sub">Mondd meg, mi kell — a Qodea megtervezi, megírja és lefuttatja.</p>
 
@@ -239,7 +255,12 @@ export function App() {
             <div ref={streamRef} className="stream">
               <div className="col">
                 {chat.items.map((item) => (
-                  <Row key={item.id} item={item} onRespond={(id, ok) => void chat.respond(id, ok)} />
+                  <Row
+                    key={item.id}
+                    item={item}
+                    onRespond={(id, ok) => void chat.respond(id, ok)}
+                    onOpenFile={(title, content) => chat.openFileTab(title, content)}
+                  />
                 ))}
               </div>
             </div>
@@ -250,14 +271,17 @@ export function App() {
         )}
       </div>
 
-      {(chat.panelOpen || chat.deployedAgents.length > 0) && (
+      {(chat.panelOpen ||
+        chat.deployedAgents.length > 0 ||
+        chat.extraTabs.length > 0) && (
         <AgentPanel
           deployed={chat.deployedAgents}
           streams={chat.agentStreams}
           openTabs={chat.openAgentTabs}
           activeTab={chat.activeAgentTab}
           onActivate={chat.setActiveAgentTab}
-          onCloseTab={chat.closeAgentTab}
+          onCloseTab={chat.closePanelTab}
+          extraTabs={chat.extraTabs}
           usage={{
             calls: chat.usageCalls,
             tokensUsed: chat.tokensUsed,
@@ -344,14 +368,30 @@ function Segmented({
 
 /* ── context usage ring ────────────────────────────────────────────────── */
 
-function ContextRing({ used, max, model }: { used: number; max: number; model: string }) {
+function ContextRing({
+  used,
+  max,
+  model,
+  onClick,
+}: {
+  used: number;
+  max: number;
+  model: string;
+  onClick?: () => void;
+}) {
   const pct = Math.min(1, max > 0 ? used / max : 0);
   const R = 10;
   const C = 2 * Math.PI * R;
   const col = pct < 0.55 ? '#6fbf8f' : pct < 0.8 ? '#d78f3f' : '#e25b43';
 
   return (
-    <div className="ctx" tabIndex={0}>
+    <div
+      className="ctx"
+      tabIndex={0}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      style={onClick ? { cursor: 'pointer' } : undefined}
+    >
       <svg viewBox="0 0 26 26" width="24" height="24">
         <circle cx="13" cy="13" r={R} fill="none" stroke="#232329" strokeWidth="3.5" />
         <circle

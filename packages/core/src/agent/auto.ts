@@ -190,7 +190,17 @@ export async function* runAgentAuto(
           return finish('complete', attempt);
         }
 
-        // no marker → keep going with the carried-over transcript
+        // ── anti-infinite-loop guard ──
+        // If the model finished WITHOUT using any tool and without the [DONE]
+        // marker, this was conversation / a plain answer — not an unfinished
+        // goal. Continuing would re-generate the same answer forever.
+        const usedTools = result.messages.some((m) => m.role === 'tool_result');
+        if (!usedTools) {
+          yield { type: 'done', reason: 'complete', turns: attempt };
+          return finish('complete', attempt);
+        }
+
+        // tools were used → real work may be ongoing: continue with transcript
         yield {
           type: 'auto-note',
           text: `Forduló ${attempt} vége (${result.reason}) — cél még nem kész, folytatás…`,

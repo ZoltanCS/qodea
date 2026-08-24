@@ -1,6 +1,6 @@
 import { Avatar } from '../avatar/Avatar';
 import type { AvatarCfg } from '../avatar/avatarConfig';
-import type { ChatItem, DeployedAgent } from '../chat/useChatSession';
+import type { ChatItem, DeployedAgent, ExtraTab } from '../chat/useChatSession';
 import { Row } from '../chat/messageViews';
 
 export interface PersonaInfo {
@@ -35,6 +35,7 @@ interface Props {
   activeTab: string;
   onActivate: (tabId: string) => void;
   onCloseTab: (id: string) => void;
+  extraTabs: ExtraTab[];
   usage: UsageStats;
 }
 
@@ -115,18 +116,33 @@ export function AgentPanel(props: Props) {
     <aside className="right-panel">
       {/* tab strip */}
       <div className="rp-tabs">
-        <button
-          className={`rp-tab${props.activeTab === 'list' ? ' on' : ''}`}
-          onClick={() => props.onActivate('list')}
-        >
-          Agentek
-        </button>
-        <button
-          className={`rp-tab${props.activeTab === 'usage' ? ' on' : ''}`}
-          onClick={() => props.onActivate('usage')}
-        >
-          Usage
-        </button>
+        {props.deployed.length > 0 && (
+          <button
+            className={`rp-tab${props.activeTab === 'list' ? ' on' : ''}`}
+            onClick={() => props.onActivate('list')}
+          >
+            Agentek
+          </button>
+        )}
+        {props.extraTabs.map((t) => (
+          <button
+            key={t.id}
+            className={`rp-tab${props.activeTab === t.id ? ' on' : ''}`}
+            onClick={() => props.onActivate(t.id)}
+          >
+            {t.title}
+            <span
+              className="rt-close"
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onCloseTab(t.id);
+              }}
+            >
+              ×
+            </span>
+          </button>
+        ))}
         {props.openTabs.map((id) => {
           const agent = props.deployed.find((a) => a.id === id);
           if (!agent) return null;
@@ -157,7 +173,18 @@ export function AgentPanel(props: Props) {
       <div className="rp-content">
         {props.activeTab === 'usage' ? (
           <UsagePage usage={props.usage} />
-        ) : props.activeTab === 'list' ? (
+        ) : props.activeTab.startsWith('file:') ? (
+          (() => {
+            const tab = props.extraTabs.find((t) => t.id === props.activeTab);
+            if (!tab) return <div className="rp-empty">A tab már zárva.</div>;
+            return (
+              <div className="rp-fileview">
+                <div className="rp-filetitle">{tab.title}</div>
+                <pre className="rp-filecontent">{tab.content}</pre>
+              </div>
+            );
+          })()
+        ) : props.activeTab === 'list' || props.deployed.length === 0 ? (
           <>
             <SectionTitle>Futó / deployolt</SectionTitle>
             {running.length === 0 && finished.length === 0 && (
