@@ -26,7 +26,7 @@ export interface ToolCallReq {
  */
 export type TurnMessage =
   | { role: 'system'; content: string }
-  | { role: 'user'; content: string }
+  | { role: 'user'; content: string; images?: string[] }
   | { role: 'assistant'; content: string; toolCalls?: ToolCallReq[] }
   | {
       role: 'tool_result';
@@ -38,6 +38,11 @@ export type TurnMessage =
 
 export function userMessage(content: string): TurnMessage {
   return { role: 'user', content };
+}
+
+/** User message carrying attached images (data-URIs or https URLs). */
+export function userMessageWithImages(content: string, images: string[]): TurnMessage {
+  return { role: 'user', content, images };
 }
 
 export interface Usage {

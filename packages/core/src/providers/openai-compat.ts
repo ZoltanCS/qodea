@@ -161,8 +161,25 @@ function flushTools(
  * including the tool-call / tool-result round trip (`role:"tool"`).
  */
 export function toWireMessage(m: TurnMessage): OpenAI.ChatCompletionMessageParam {
-  if (m.role === 'system' || m.role === 'user') {
-    return { role: m.role, content: m.content };
+  if (m.role === 'system') {
+    return { role: 'system', content: m.content };
+  }
+  if (m.role === 'user') {
+    const images = (m as { images?: string[] }).images ?? [];
+    if (images.length > 0) {
+      // vision content parts (OpenAI-compatible image_url format)
+      return {
+        role: 'user',
+        content: [
+          { type: 'text', text: m.content },
+          ...images.map((img) => ({
+            type: 'image_url' as const,
+            image_url: { url: img },
+          })),
+        ],
+      } as OpenAI.ChatCompletionMessageParam;
+    }
+    return { role: 'user', content: m.content };
   }
   if (m.role === 'assistant') {
     return {

@@ -182,7 +182,13 @@ export function useChatSession() {
   }, []);
 
   useEffect(() => {
-    const unsub = window.qodea.onEvent((_sid, ev: WireEvent) => {
+    const unsub = window.qodea.onEvent((sid, ev: WireEvent) => {
+      // ── 0) adopt runs started elsewhere (e.g. brainstorm materialize) ──
+      if (sid && sid !== activeSessionId && status === 'idle') {
+        setSessionId(sid);
+        setActiveSessionId(sid);
+        setStatus('running');
+      }
       // ── 1) subagent lifecycle: update deployed list (they carry ag_ ids too) ──
       if (ev.type === 'subagent-start') {
         setDeployedAgents((prev) =>

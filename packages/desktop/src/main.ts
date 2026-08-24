@@ -9,6 +9,9 @@ import {
   PROVIDER_PRESETS,
   runAgentAuto,
   mergeAgents,
+  createGenerateImageTool,
+  resolveApiKey,
+  type Tool,
   configSchema,
   type AgentEvent,
   type AgentRunOptions,
@@ -66,7 +69,35 @@ interface ActiveSession {
 }
 
 const sessions = new Map<string, ActiveSession>();
+let mainWindowRef: BrowserWindow | null = null;
+function getMainWindow(): BrowserWindow | null {
+  return mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef : null;
+}
 let sessionCounter = 0;
+
+function createBrainstormWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 480,
+    height: 760,
+    minWidth: 380,
+    minHeight: 560,
+    backgroundColor: '#0b0b0d',
+    autoHideMenuBar: true,
+    title: 'Qodea Brainstorm',
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  win.webContents.on("preload-error", (_e, p, err) => {
+    console.error("[qodea] preload-error:", p, err);
+  });
+
+  return win;
+}
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -150,6 +181,8 @@ interface StartRequest {
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
   uiMode?: 'agent' | 'experts';
+  images?: string[];
+  brainstorm?: boolean;
   history?: TurnMessage[];
 }
 
@@ -192,6 +225,7 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
     task: req.task,
     ...(req.cwd ? { cwd: req.cwd } : {}),
     providerId: entry.id,
+    ...(req.brainstorm ? { kind: 'brainstorm' } : {}),
   });
   const sessionId = storeId;
   const abort = new AbortController();
@@ -228,6 +262,35 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
 
       const agents = mergeAgents(config.agents);
 
+      // ── brainstorm: creative partner chat, single generate_image tool, no file access ──
+      let brainstormTools: Tool[] | undefined;
+      let brainstormPrompt: string | undefined;
+      if (req.brainstorm) {
+        const { createGenerateImageTool } = await import('@qodea/core');
+        brainstormTools = [
+          createGenerateImageTool({
+            baseUrl: entry.baseUrl ?? 'https://resources.example',
+            apiKey: resolveApiKey(entry),
+            models: ['gpt-image-1', 'dall-e-3'],
+          }),
+        ];
+        brainstormPrompt =
+          'You are the Brainstorm partner: a creative director helping the user shape a project ' +
+          'BEFORE any code is written. Multi-turn design conversation. Rules:\n' +
+          '- Ask sharp questions, propose ideas, inspire. Match the user\'s language (Hungarian).\n' +
+          '- For ANY UI element under discussion (button, card, hero, layout), output a minimal live ' +
+          'preview inside a ```preview fenced block containing ONE small standalone HTML document ' +
+          '(inline CSS, single element, no external assets). The user sees it rendered.\n' +
+          '- When the user asks for changes: output a NEW preview block. Never repeat the old one — ' +
+          'it stays visible above for comparison.\n' +
+          '- For visual mood/identity: call generate_image with a vivid prompt.\n' +
+          '- Never write project files. Never claim work is done. No [DONE] marker.\n' +
+          '- Same anti-slop discipline: no em/en-dashes in visible text, no emoji icons, no ' +
+          'Inter-only, no purple-to-indigo gradients, no three identical cards, no fake numbers.\n' +
+          '- When the plan and design feel fully agreed, output a "## SPEC" section (goal, pages, ' +
+          'features, design direction, tech) and end with the single line: [READY]';
+      }
+
       // ── failover chain from the provider entry's fallbacks list ──
       const allEntries = getEffectiveProviders(config);
       const byId = new Map(allEntries.map((e) => [e.id, e]));
@@ -247,8 +310,8 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         model: runModel,
         task: req.task,
         cwd: req.cwd,
-        mode: req.mode,
-        asker,
+        mode: req.brainstorm ? 'yolo' : req.mode,
+        asker: req.brainstorm ? undefined : asker,
         signal: abort.signal,
         injectQueue,
         agents,
@@ -256,7 +319,12 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
       if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
 
-      {
+      if (req.brainstorm) {
+        options.systemPrompt = brainstormPrompt;
+        options.tools = brainstormTools;
+        options.enableSubagents = false;
+        options.maxTurns = 200;
+      } else {
         options.systemSuffix =
           req.uiMode === 'experts'
             ? '\n\n## ROLE: ORCHESTRATOR (Experts mode)\n' +
@@ -272,7 +340,9 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       }
 
       // spawn_agent tool only in Experts mode — plain Agent works alone
-      options.enableSubagents = req.uiMode === 'experts';
+      if (!req.brainstorm) {
+        options.enableSubagents = req.uiMode === 'experts';
+      }
 
       const iterator = runAgentAuto({
         ...options,
@@ -323,6 +393,16 @@ function registerIpc(win: () => BrowserWindow): void {
   ipcMain.handle('qodea:providers', () => listProviders());
 
   // ── settings: read editable drafts (secrets masked) ──────────────────────
+  ipcMain.handle('qodea:brainstorm:open', async () => {
+    const w = createBrainstormWindow();
+    if (isDev) {
+      void w.loadURL(uiDevUrl + '/?view=brainstorm');
+    } else {
+      void w.loadFile(uiProdPath, { search: 'view=brainstorm' });
+    }
+    return { ok: true };
+  });
+
   ipcMain.handle('qodea:stats:get', async () => {
     const { loadStats } = await import('./stats.js');
     return loadStats();
@@ -503,7 +583,8 @@ function registerIpc(win: () => BrowserWindow): void {
 
   ipcMain.handle(
     'qodea:start',
-    (_event, req: StartRequest) => startSession(win(), req),
+    (_event, req: StartRequest) =>
+      startSession(BrowserWindow.fromWebContents(_event.sender) ?? win(), req),
   );
 
   ipcMain.handle(
@@ -551,6 +632,69 @@ function registerIpc(win: () => BrowserWindow): void {
     await pressKey(page, key);
   });
 
+  // ── brainstorm: hand the agreed plan to a fresh execution session ──
+  ipcMain.handle(
+    'qodea:brainstorm:materialize',
+    async (_e, payload: { sessionId: string }) => {
+      const session = await getSession(payload.sessionId);
+      if (!session) throw new Error('brainstorm session not found');
+
+      // brief = last assistant message containing the SPEC, else the last message
+      let brief = '';
+      for (let i = session.messages.length - 1; i >= 0; i--) {
+        const m = session.messages[i];
+        if (!m) continue;
+        if (m.role === 'assistant' && m.content.includes('[READY]')) {
+          const idx = m.content.lastIndexOf('## SPEC');
+          brief = idx >= 0 ? m.content.slice(idx) : m.content;
+          break;
+        }
+      }
+      if (!brief) {
+        const firstUser = session.messages.find((m) => m.role === 'user');
+        brief = firstUser?.content ?? session.title;
+      }
+
+      const goal = session.messages.find((m) => m.role === 'user')?.content ?? session.title;
+      const task = `[cwd: ${session.cwd ?? ''}]\n\nOriginal goal:\n${goal}\n\nAGREED SPEC:\n${brief}`;
+
+      const execId = await touchSession({
+        task: `Execute the agreed TaskFlow-style plan`,
+        ...(session.cwd ? { cwd: session.cwd } : {}),
+        providerId: session.providerId,
+      });
+      await appendMessages(execId, [
+        { role: 'user', content: task },
+      ]);
+
+      // launch the execution run bound to the MAIN window
+      const mainTarget = getMainWindow();
+      if (mainTarget) {
+        await startSession(mainTarget, {
+          sessionId: execId,
+          task,
+          cwd: session.cwd ?? '.',
+          mode: 'yolo',
+          uiMode: 'experts',
+          ...(session.providerId ? { providerId: session.providerId } : {}),
+          ...(session.model ? { model: session.model } : {}),
+          history: [{ role: 'user' as const, content: task }],
+        });
+      }
+
+      return {
+        sessionId: execId,
+        task,
+        cwd: session.cwd ?? '',
+      };
+    },
+  );
+
+  ipcMain.handle('qodea:brainstorm:close', (event) => {
+    const w = BrowserWindow.fromWebContents(event.sender);
+    w?.close();
+  });
+
   ipcMain.handle('qodea:sendMessage', (_event, payload: { sessionId: string; text: string }) => {
     sessions.get(payload.sessionId)?.injectQueue.items.push(payload.text);
   });
@@ -562,6 +706,7 @@ if (!gotLock) {
 } else {
   app.whenReady().then(() => {
     let mainWindow = createWindow();
+    mainWindowRef = mainWindow;
 
     registerIpc(() => mainWindow);
 

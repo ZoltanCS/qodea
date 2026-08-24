@@ -180,6 +180,7 @@ export function App() {
         onDelete={(id) => void chat.removeSession(id)}
         onNewChat={chat.newChat}
         onAddProject={() => void chat.addProject()}
+        onBrainstorm={() => void window.qodea.brainstormOpen()}
         onNewChatInProject={(cwd) => {
           chat.newChat();
           chat.setCwd(cwd);

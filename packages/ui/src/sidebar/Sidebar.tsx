@@ -13,6 +13,7 @@ interface SidebarProps {
   onDelete: (id: string) => void;
   onNewChat: () => void;
   onAddProject: () => void;
+  onBrainstorm?: () => void;
   onNewChatInProject: (cwd: string) => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
@@ -36,6 +37,9 @@ export function Sidebar(props: SidebarProps) {
         </button>
         <button className="new-chat" onClick={() => void props.onAddProject()} title="Projekt mappa megnyitása">
           Új projekt
+        </button>
+        <button className="new-chat brainstorm" onClick={() => props.onBrainstorm?.()} title="Brainstorm — tervezzük meg együtt">
+          Brainstorm
         </button>
       </div>
 

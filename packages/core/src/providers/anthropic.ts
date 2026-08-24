@@ -23,6 +23,28 @@ export function toWireMessages(messages: TurnMessage[]): Anthropic.MessageParam[
     if (m.role === 'system') continue;
 
     if (m.role === 'user') {
+      const images = (m as { images?: string[] }).images ?? [];
+      if (images.length > 0) {
+        const blocks: Anthropic.ContentBlockParam[] = [];
+        for (const img of images) {
+          const dataUri = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(img);
+          if (dataUri) {
+            blocks.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: dataUri[1] as Anthropic.Base64ImageSource['media_type'],
+                data: dataUri[2]!,
+              },
+            });
+          } else if (/^https?:\/\//i.test(img)) {
+            blocks.push({ type: 'image', source: { type: 'url', url: img } });
+          }
+        }
+        blocks.push({ type: 'text', text: m.content });
+        out.push({ role: 'user', content: blocks });
+        continue;
+      }
       out.push({ role: 'user', content: m.content });
       continue;
     }

@@ -146,6 +146,9 @@ declare global {
       browserClick(xPct: number, yPct: number): Promise<void>;
       browserType(text: string): Promise<void>;
       browserKey(key: string): Promise<void>;
+      brainstormOpen(): Promise<void>;
+      brainstormMaterialize(sessionId: string): Promise<{ sessionId: string; task: string; cwd: string; history: unknown[] }>;
+      closeBrainstormWindow(): Promise<void>;
       onEvent(callback: (sessionId: string, event: WireEvent) => void): () => void;
     };
   }

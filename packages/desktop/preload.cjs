@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld('qodea', {
   browserClick: (x, y) => ipcRenderer.invoke('qodea:browser:click', x, y),
   browserType: (text) => ipcRenderer.invoke('qodea:browser:type', text),
   browserKey: (key) => ipcRenderer.invoke('qodea:browser:key', key),
+  brainstormOpen: () => ipcRenderer.invoke('qodea:brainstorm:open'),
+  brainstormMaterialize: (sessionId) => ipcRenderer.invoke('qodea:brainstorm:materialize', { sessionId }),
+  closeWindow: () => ipcRenderer.invoke('qodea:brainstorm:close'),
 
   /** Subscribe to agent events; returns an unsubscribe function. */
   onEvent: (callback) => {

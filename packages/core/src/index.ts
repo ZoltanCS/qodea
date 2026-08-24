@@ -69,6 +69,7 @@ export {
   type PermissionMode,
 } from './permissions/manager.js';
 
+export { createGenerateImageTool, type ImageGenConfig } from './tools/image.js';
 export { createSpawnAgentTool } from './agents/spawn.js';
 export {
   PERSONAS,
