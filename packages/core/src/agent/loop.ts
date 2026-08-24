@@ -79,6 +79,8 @@ export interface AgentRunOptions {
   depth?: number;
   /** Mutable queue — user messages typed mid-run get injected at turn boundaries. */
   injectQueue?: { items: string[] };
+  /** Skip re-appending the task as a user message (continuation attempts). */
+  skipTaskAppend?: boolean;
   /** Context window for compaction trigger (default 131072). */
   contextWindow?: number;
   enableSubagents?: boolean;
@@ -170,8 +172,11 @@ async function* runAgentInner(
         (opts.systemPrompt ?? buildSystemPrompt()) + (opts.systemSuffix ?? ''),
     },
     ...(opts.initialMessages ?? []),
-    // cwd rides with the task (dynamic) — keeps the static system prefix cache-friendly
-    userMessage(`[cwd: ${opts.cwd}]\n\n${opts.task}`),
+    // continuation attempts already carry the task in initialMessages —
+    // re-appending would duplicate the goal as a fresh user message every restart
+    ...(opts.skipTaskAppend && (opts.initialMessages?.length ?? 0) > 0
+      ? []
+      : [userMessage(`[cwd: ${opts.cwd}]\n\n${opts.task}`)]),
   ];
 
   let lastUsage: Usage | undefined;

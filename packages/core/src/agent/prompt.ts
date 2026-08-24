@@ -36,6 +36,9 @@ export function buildSystemPrompt(platform: NodeJS.Platform = process.platform):
     isWin
       ? '- OS: Windows. Shell: PowerShell. No "&&" (use ";" or separate calls). Mind the quoting.'
       : '- OS: Unix. Shell: bash.',
+    isWin
+      ? '- Multi-line Python: NEVER inline it with python -c (PowerShell quoting breaks). Write a .py file and run it.'
+      : '',
     '- Working directory is provided with the task. Paths are relative to it.',
   ].join('\n');
 }

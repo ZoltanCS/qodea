@@ -90,7 +90,9 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 function firstLine(text: string): string {
-  return text.trim().split(/\r?\n/)[0] ?? '';
+  // strip the [cwd: …] prefix so titles stay clean
+  const clean = text.trim().replace(/^\[cwd:[^\]]*\]\s*/, '');
+  return clean.split(/\r?\n/)[0] ?? '';
 }
 
 /* ── projects ─────────────────────────────────────────────────────────────── */

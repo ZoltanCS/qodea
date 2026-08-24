@@ -100,6 +100,26 @@ async function searchTavily(key: string, query: string): Promise<SearchResult[]>
     .map((r) => ({ title: r.title ?? r.url!, url: r.url!, snippet: r.content ?? '' }));
 }
 
+/** Second DDG fallback: the lite endpoint (different rate-limit pool). */
+async function searchDdgLite(query: string): Promise<SearchResult[]> {
+  const url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+  const { ok, status, body } = await httpText(url);
+  if (!ok) throw new Error(`DDG-lite HTTP ${status}`);
+  const out: SearchResult[] = [];
+  for (const m of body.matchAll(/<a[^>]+class="result-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    let href = decodeEntities(m[1] ?? '');
+    const uddg = /[?&]uddg=([^&]+)/.exec(href)?.[1];
+    if (uddg) href = decodeURIComponent(uddg);
+    if (!/^https?:\/\//i.test(href)) continue;
+    out.push({
+      title: stripTags(m[2] ?? '').slice(0, 120),
+      url: href,
+      snippet: '',
+    });
+    if (out.length >= MAX_RESULTS) break;
+  }
+  return out;
+}
 /* ── the two tools ──────────────────────────────────────────────────────── */
 
 export const webSearchTool: Tool = {
@@ -137,6 +157,7 @@ export const webSearchTool: Tool = {
     const attempts: Array<{ src: string; fn: () => Promise<SearchResult[]> }> = [];
     if (searxngUrl) attempts.push({ src: 'searxng', fn: () => searchSearxng(searxngUrl!, query) });
     attempts.push({ src: 'duckduckgo', fn: () => searchDdg(query) });
+    attempts.push({ src: 'duckduckgo-lite', fn: () => searchDdgLite(query) });
 
     const tavilyKey =
       process.env['TAVILY_API_KEY'] ?? process.env['QODEA_TAVILY_API_KEY'];

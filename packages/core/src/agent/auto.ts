@@ -154,7 +154,9 @@ export async function* runAgentAuto(
           maxTurns: ATTEMPT_MAX_TURNS,
           ...(opts.injectQueue ? { injectQueue: opts.injectQueue } : {}),
           contextWindow: opts.contextWindow,
-          ...(messages.length > 0 ? { initialMessages: messages } : {}),
+          ...(messages.length > 0
+            ? { initialMessages: messages, skipTaskAppend: true }
+            : {}),
         };
 
         const gen = runAgent(attemptOpts);

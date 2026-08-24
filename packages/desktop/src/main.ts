@@ -696,7 +696,10 @@ function registerIpc(win: () => BrowserWindow): void {
   });
 
   ipcMain.handle('qodea:sendMessage', (_event, payload: { sessionId: string; text: string }) => {
-    sessions.get(payload.sessionId)?.injectQueue.items.push(payload.text);
+    const s = sessions.get(payload.sessionId);
+    if (!s) return { queued: false };
+    s.injectQueue.items.push(payload.text);
+    return { queued: true };
   });
 }
 

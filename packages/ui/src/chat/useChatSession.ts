@@ -435,12 +435,25 @@ export function useChatSession() {
 
       // ── agent already running → queue the message for the next turn ──
       if (status === 'running') {
-        if (!sessionId) return;
+        if (!sessionId) {
+          setErrorBanner('Nincs aktív session — az üzenet nem sorolódott.');
+          return;
+        }
+        const queuedId = nextId();
         setItems((prev) => [
           ...prev,
-          { kind: 'user', id: nextId(), text: trimmed, queued: true },
+          { kind: 'user', id: queuedId, text: trimmed, queued: true },
         ]);
-        void window.qodea.sendMessage(sessionId, trimmed);
+        try {
+          const qr = await window.qodea.sendMessage(sessionId, trimmed);
+          if (!qr.queued) {
+            setItems((prev) => prev.filter((it) => it.id !== queuedId));
+            setErrorBanner('A futó session nem elérhető — az üzenet nem sorolódott.');
+          }
+        } catch (err) {
+          setItems((prev) => prev.filter((it) => it.id !== queuedId));
+          setErrorBanner(err instanceof Error ? err.message : String(err));
+        }
         return;
       }
 
