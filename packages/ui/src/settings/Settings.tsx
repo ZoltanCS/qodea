@@ -54,6 +54,7 @@ interface Draft {
   apiKeyEnv: string;
   defaultModel: string;
   contextWindow: string;
+  fallbacksText: string;
   azureEndpoint: string;
   azureApiVersion: string;
   azureDeployment: string;
@@ -73,6 +74,7 @@ function toDraft(p: ProviderDraft, isDefault: boolean): Draft {
     apiKeyEnv: p.apiKeyEnv ?? '',
     defaultModel: p.defaultModel ?? '',
     contextWindow: p.contextWindow ? String(p.contextWindow) : '',
+    fallbacksText: (p.fallbacks ?? []).map((f) => `${f.provider} ${f.model}`).join('\n'),
     azureEndpoint: p.azureEndpoint ?? '',
     azureApiVersion: p.azureApiVersion ?? '',
     azureDeployment: p.azureDeployment ?? '',
@@ -93,6 +95,7 @@ function blankDraft(): Draft {
     apiKeyEnv: '',
     defaultModel: '',
     contextWindow: '',
+    fallbacksText: '',
     azureEndpoint: '',
     azureApiVersion: '2024-10-21',
     azureDeployment: '',
@@ -215,6 +218,21 @@ export function Settings({ onClose }: { onClose: () => void }) {
         ...(d.apiKeyEnv ? { apiKeyEnv: d.apiKeyEnv.trim() } : {}),
         ...(d.defaultModel ? { defaultModel: d.defaultModel.trim() } : {}),
         ...(d.contextWindow ? { contextWindow: Number(d.contextWindow) } : {}),
+        ...(d.fallbacksText.trim()
+          ? {
+              fallbacks: d.fallbacksText
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .map((line) => {
+                  const sp = line.indexOf(' ');
+                  return sp > 0
+                    ? { provider: line.slice(0, sp), model: line.slice(sp + 1) }
+                    : null;
+                })
+                .filter((x): x is { provider: string; model: string } => x !== null),
+            }
+          : {}),
         ...(d.kind === 'azure' && d.azureEndpoint
           ? {
               azureEndpoint: d.azureEndpoint.trim(),
@@ -486,6 +504,19 @@ function ProvidersEditor(props: {
               ))}
             </div>
           ))}
+
+        <Field
+          label="Tartalék lánc (fallback)"
+          hint="Soronként egy: providerId modell. Ha ez a szolgáltató hibázik, ezekkel folytatódik."
+        >
+          <textarea
+            rows={3}
+            value={active.fallbacksText ?? ''}
+            onChange={(e) => props.patchActive({ fallbacksText: e.target.value })}
+            placeholder={'azure gpt-4o\ncerebras llama3.3-70b'}
+            spellCheck={false}
+          />
+        </Field>
 
         <label className="check">
           <input

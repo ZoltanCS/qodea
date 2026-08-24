@@ -21,6 +21,15 @@ export const providerEntrySchema = z.object({
   defaultModel: z.string().optional(),
   /** Context window size in tokens — powers the UI's usage ring (default 131072). */
   contextWindow: z.number().int().positive().optional(),
+  /** Failover chain: when this provider/model fails, try these (provider = another entry id). */
+  fallbacks: z
+    .array(
+      z.object({
+        provider: z.string(),
+        model: z.string(),
+      }),
+    )
+    .optional(),
   azure: z
     .object({
       endpoint: z.string().url(),

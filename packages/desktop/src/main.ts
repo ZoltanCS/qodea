@@ -161,6 +161,7 @@ interface SaveDraft {
   apiKeyEnv?: string | null;
   defaultModel?: string | null;
   contextWindow?: number | null;
+  fallbacks?: Array<{ provider: string; model: string }>;
   azureEndpoint?: string | null;
   azureApiVersion?: string | null;
   azureDeployment?: string | null;
@@ -227,6 +228,20 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
 
       const agents = mergeAgents(config.agents);
 
+      // ── failover chain from the provider entry's fallbacks list ──
+      const allEntries = getEffectiveProviders(config);
+      const byId = new Map(allEntries.map((e) => [e.id, e]));
+      const failovers = (entry.fallbacks ?? [])
+        .map((fb) => {
+          const fbEntry = byId.get(fb.provider);
+          if (!fbEntry) return null;
+          return {
+            provider: createProvider(fbEntry),
+            model: fb.model,
+          };
+        })
+        .filter((x): x is { provider: NonNullable<typeof x>['provider']; model: string } => x !== null);
+
       const options: AgentRunOptions = {
         provider,
         model: runModel,
@@ -256,13 +271,12 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
               'fix workers on issues) until everything is done and verified.\n' +
               '- Then synthesize a short final report for the user and end with [DONE].\n' +
               'The ONLY exception: reading a file yourself to write a better sub-agent instruction.'
-            : '\n\nAutonomous mode: drive the task to completion. When parallel or specialist work helps ' +
-              '(research, implementation, review, QA), delegate via spawn_agent instead of doing everything ' +
-              'yourself. Never stop until the goal is fully done and verified.';
+            : undefined;
       }
 
       const iterator = runAgentAuto({
         ...options,
+        failovers,
         wallClockMs: 8 * 3600_000,
         stallTimeoutMs: 600_000,
         maxRestarts: 60,
@@ -329,6 +343,7 @@ function registerIpc(win: () => BrowserWindow): void {
         apiKeyEnv: e.apiKeyEnv ?? null,
         defaultModel: e.defaultModel ?? null,
         contextWindow: e.contextWindow ?? null,
+        fallbacks: e.fallbacks ?? null,
         azureEndpoint: e.azure?.endpoint ?? null,
         azureApiVersion: e.azure?.apiVersion ?? null,
         azureDeployment: e.azure?.deployment ?? null,
@@ -381,6 +396,7 @@ function registerIpc(win: () => BrowserWindow): void {
           ...(d.apiKeyEnv ? { apiKeyEnv: d.apiKeyEnv } : {}),
           ...(d.defaultModel ? { defaultModel: d.defaultModel } : {}),
           ...(d.contextWindow ? { contextWindow: d.contextWindow } : {}),
+          ...(d.fallbacks ? { fallbacks: d.fallbacks } : {}),
           ...(d.azureEndpoint
             ? {
                 azure: {

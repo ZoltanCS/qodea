@@ -1,6 +1,6 @@
 import { emptyAgentState } from '../tools/types.js';
 import { runAgent, type AgentEvent, type AgentRunOptions, type AgentRunResult } from './loop.js';
-import { userMessage } from '../types.js';
+import { userMessage, type Provider } from '../types.js';
 import type { TurnMessage } from '../types.js';
 import { isAbortError } from './ref.js';
 
@@ -27,6 +27,13 @@ export interface AutoLoopOptions extends Omit<AgentRunOptions, 'initialMessages'
   restartBaseDelayMs?: number;
   /** Same mutable queue passed through to every attempt. */
   injectQueue?: { items: string[] };
+  /**
+   * Failover chain: on repeated failure the supervisor cycles through these
+   * (provider, model) pairs. Index cycles, so the primary stays first.
+   */
+  failovers?: Array<{ provider: Provider; model: string }>;
+  /** Stall timeout grows 50% per same-provider retry, capped here (default 30 min). */
+  maxStallTimeoutMs?: number;
 }
 
 interface AttemptOutcome {
@@ -101,6 +108,8 @@ export async function* runAgentAuto(
   let attempt = 0;
   let consecutiveErrors = 0;
   let lastErrorKey = '';
+  let attemptStallMs = stallTimeoutMs; // grows 50% per same-provider concrete-error retry
+  let regenCount = 0; // empty/invalid response regenerations since last success
 
   for (;;) {
     attempt_loop: {
@@ -116,9 +125,15 @@ export async function* runAgentAuto(
           return finish('time-limit', attempt);
         }
 
+        // ── failover chain: cycle provider/model per attempt ──
+        const chain = opts.failovers ?? [];
+        const step = chain.length > 0 ? (attempt - 1) % (chain.length + 1) : 0;
+        const useFailover = step > 0 && chain.length > 0;
+        const stepCfg = useFailover ? chain[(step - 1) % chain.length] : undefined;
+
         const attemptOpts: AgentRunOptions = {
-          provider: opts.provider,
-          model: opts.model,
+          provider: stepCfg ? stepCfg.provider : opts.provider,
+          model: stepCfg ? stepCfg.model : opts.model,
           task: opts.task,
           cwd: opts.cwd,
           mode: opts.mode ?? 'yolo',
@@ -134,9 +149,11 @@ export async function* runAgentAuto(
           ...(opts.maxParallelSpawns !== undefined
             ? { maxParallelSpawns: opts.maxParallelSpawns }
             : {}),
+          ...(opts.agents ? { agents: opts.agents } : {}),
           signal: attemptAc.signal,
           maxTurns: ATTEMPT_MAX_TURNS,
           ...(opts.injectQueue ? { injectQueue: opts.injectQueue } : {}),
+          contextWindow: opts.contextWindow,
           ...(messages.length > 0 ? { initialMessages: messages } : {}),
         };
 
@@ -151,7 +168,7 @@ export async function* runAgentAuto(
           if (attemptAc.signal.aborted || Date.now() - startedAt > wallClockMs) {
             throw StallOrAbort(attemptAc.signal.aborted);
           }
-          const budget = Math.max(250, stallTimeoutMs - (Date.now() - lastActivity));
+          const budget = Math.max(250, attemptStallMs - (Date.now() - lastActivity));
           const res: NextRes = await nextWithTimeout(gen, budget);
           if (res.stalled) throw new StallSignal();
           if (res.err) {
@@ -178,6 +195,7 @@ export async function* runAgentAuto(
         // ── attempt finished cleanly ──
         messages = result.messages;
         consecutiveErrors = 0;
+        attemptStallMs = stallTimeoutMs; // success resets the stall budget
 
         if (result.reason === 'aborted' || isAbortSignalAborted(opts.signal)) {
           yield { type: 'done', reason: 'aborted', turns: attempt };
@@ -199,6 +217,24 @@ export async function* runAgentAuto(
             text: `Új üzenet érkezett (${attempt}. forduló után) — folytatás…`,
           };
           break attempt_loop;
+        }
+
+        // ── empty/invalid response: regenerate the last answer once, then failover ──
+        const isEmptyResponse =
+          result.reason === 'complete' &&
+          !finalText.trim() &&
+          !result.messages.some((m) => m.role === 'tool_result');
+        if (isEmptyResponse && regenCount < 1) {
+          regenCount++;
+          // drop the empty assistant tail so the retry generates fresh
+          messages = messages.filter(
+            (m, i) => !(i === messages.length - 1 && m.role === 'assistant'),
+          );
+          yield {
+            type: 'auto-note',
+            text: 'üres válasz — utolsó válasz újragenerálása…',
+          };
+          break attempt_loop; // immediate retry, no restart-count
         }
 
         if (DONE_RE.test(finalText)) {
@@ -248,7 +284,14 @@ export async function* runAgentAuto(
           return finish('failed', attempt);
         }
 
-        const delay = Math.min(30_000, restartBaseDelayMs * 2 ** (restarts - 1));
+        // concrete error → fixed 5s retry; stall → exponential backoff.
+        // Watchdog budget grows 50% per retry so slow providers get room.
+        const isStall = /StallError|watchdog/i.test(reason);
+        const delay = isStall
+          ? Math.min(30_000, restartBaseDelayMs * 2 ** (restarts - 1))
+          : 5_000;
+        attemptStallMs = Math.min(attemptStallMs * 1.5, 1_800_000);
+
         yield { type: 'auto-restart', attempt, reason, delayMs: delay };
         await new Promise<void>((resolve) => {
           const t = setTimeout(resolve, delay);

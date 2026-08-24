@@ -37,6 +37,7 @@ export interface ProviderDraft {
   apiKeyEnv: string | null;
   defaultModel: string | null;
   contextWindow: number | null;
+  fallbacks?: Array<{ provider: string; model: string }>;
   azureEndpoint: string | null;
   azureApiVersion: string | null;
   azureDeployment: string | null;
@@ -51,6 +52,7 @@ export interface SaveDraft {
   apiKeyEnv?: string | null;
   defaultModel?: string | null;
   contextWindow?: number | null;
+  fallbacks?: Array<{ provider: string; model: string }>;
   azureEndpoint?: string | null;
   azureApiVersion?: string | null;
   azureDeployment?: string | null;
