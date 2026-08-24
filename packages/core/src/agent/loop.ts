@@ -10,10 +10,12 @@ import type {
 } from '../types.js';
 import { userMessage } from '../types.js';
 import { buildSystemPrompt } from './prompt.js';
+import { estimateContextBreakdown, estimateTokens } from '../util/tokens.js';
 import { createSpawnAgentTool } from '../agents/spawn.js';
 import type { AgentDef } from '../agents/personas.js';
 import { BUILTIN_AGENTS } from '../agents/personas.js';
 import { isAbortError, runAgentRef } from './ref.js';
+import { planCompaction, summaryPrompt } from './compact.js';
 
 /** Optional tagging so subagent events can be routed in the UI. */
 export interface EvTag {
@@ -28,7 +30,7 @@ export type AgentEvent =
   | ({ type: 'tool-start'; callId: string; name: string; summary: string } & EvTag)
   | ({ type: 'tool-result'; name: string; content: string; isError: boolean } & EvTag)
   | ({ type: 'permission-denied'; name: string; summary: string } & EvTag)
-  | ({ type: 'usage'; inputTokens?: number; outputTokens?: number; cachedTokens?: number } & EvTag)
+  | ({ type: 'usage'; inputTokens?: number; outputTokens?: number; cachedTokens?: number; breakdown?: { system: number; tools: number; history: number; outputs: number } } & EvTag)
   | ({ type: 'done'; reason: 'complete' | 'max-turns' | 'aborted' | 'failed' | 'time-limit'; turns: number } & EvTag)
   | ({ type: 'auto-restart'; attempt: number; reason: string; delayMs: number } & EvTag)
   | ({ type: 'auto-note'; text: string } & EvTag)
@@ -77,6 +79,8 @@ export interface AgentRunOptions {
   depth?: number;
   /** Mutable queue — user messages typed mid-run get injected at turn boundaries. */
   injectQueue?: { items: string[] };
+  /** Context window for compaction trigger (default 131072). */
+  contextWindow?: number;
   enableSubagents?: boolean;
   maxParallelSpawns?: number;
 }
@@ -159,16 +163,15 @@ async function* runAgentInner(
     }
   };
 
-  const messages: TurnMessage[] = [
+  let messages: TurnMessage[] = [
     {
       role: 'system',
       content:
-        (opts.systemPrompt ??
-          buildSystemPrompt({ cwd: opts.cwd, tools: specs })) +
-        (opts.systemSuffix ?? ''),
+        (opts.systemPrompt ?? buildSystemPrompt()) + (opts.systemSuffix ?? ''),
     },
     ...(opts.initialMessages ?? []),
-    userMessage(opts.task),
+    // cwd rides with the task (dynamic) — keeps the static system prefix cache-friendly
+    userMessage(`[cwd: ${opts.cwd}]\n\n${opts.task}`),
   ];
 
   let lastUsage: Usage | undefined;
@@ -177,8 +180,79 @@ async function* runAgentInner(
     turns: number,
   ): AgentRunResult => ({ reason, turns, state, messages });
 
+  let lastCompactTurn = -99;
+  let compactCount = 0;
+
   for (let turn = 1; turn <= maxTurns; turn++) {
     drainInjects();
+
+    // ── auto-compaction at 60% context (cheap-first: clear → summarize) ──
+    const ctxWindow = opts.contextWindow ?? 131_072;
+    const usedEstimate = estimateTokens(
+      messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('') +
+        JSON.stringify(specs),
+    );
+    const plan = planCompaction(messages, usedEstimate, {
+      ctxWindow,
+      turnsSinceLast: turn - lastCompactTurn,
+    });
+    if (plan.should) {
+      clearStaleToolResults(messages, 2);
+      const stillUsed = estimateTokens(
+        messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join(''),
+      );
+      if (stillUsed >= ctxWindow * 0.6 && compactCount < 3) {
+        // LLM summary of the middle slice (last `keepTail` messages stay raw)
+        const keepFrom = Math.max(1, messages.length - 8);
+        const slice = messages.slice(1, keepFrom);
+        try {
+          const sumGen = opts.provider.streamChat({
+            model: opts.model,
+            messages: [
+              {
+                role: 'user',
+                content:
+                  summaryPrompt(slice) +
+                  '\n\n[Respond with the summary only.]',
+              },
+            ],
+            ...(opts.signal ? { signal: opts.signal } : {}),
+          });
+          let summary = '';
+          for await (const ev of sumGen) {
+            if (ev.type === 'text-delta') summary += ev.text;
+            if (ev.type === 'done' && ev.stopReason === 'length') summary += ' …[cutoff]';
+          }
+          if (summary.trim()) {
+            const summaryMsg: TurnMessage = {
+              role: 'user',
+              content: `[COMPACTED HISTORY — summary of ${slice.length} earlier messages]\n${summary}`,
+            };
+            messages = [
+              messages[0]!,
+              summaryMsg,
+              ...messages.slice(keepFrom),
+            ];
+            compactCount++;
+            lastCompactTurn = turn;
+            yield {
+              type: 'auto-note',
+              text: `kontextus tömörítve (${Math.round(
+                (usedEstimate / ctxWindow) * 100,
+              )}% → ~${Math.round((stillUsed / ctxWindow) * 100)}%)`,
+            };
+          }
+        } catch (err) {
+          if (isAbortError(err)) throw err;
+          // compaction is best-effort — continue without it
+          yield {
+            type: 'auto-note',
+            text: `kompaktálás sikertelen: ${err instanceof Error ? err.message : String(err)}`,
+          };
+        }
+      }
+    }
+
     yield { type: 'turn-start', turn };
 
     let text = '';
@@ -205,7 +279,18 @@ async function* runAgentInner(
           calls.push({ id: ev.id, name: ev.name, argumentsJson: ev.argumentsJson });
         } else if (ev.type === 'usage') {
           lastUsage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, cachedTokens: ev.cachedTokens };
-          yield { type: 'usage', inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, cachedTokens: ev.cachedTokens };
+          const breakdown = estimateContextBreakdown({
+            system: (messages[0]?.content as string) ?? '',
+            toolsJson: JSON.stringify(specs),
+            messages: messages.slice(1),
+          });
+          yield {
+            type: 'usage',
+            inputTokens: ev.inputTokens,
+            outputTokens: ev.outputTokens,
+            cachedTokens: ev.cachedTokens,
+            breakdown,
+          };
         } else if (ev.type === 'done') {
           stop = ev.stopReason;
         }
@@ -323,6 +408,9 @@ async function* runAgentInner(
       yield { type: 'done', reason: 'aborted', turns: turn };
       return finish('aborted', turn);
     }
+
+    // ── stale tool-result clearing: old outputs cost tokens every turn ──
+    clearStaleToolResults(messages, 6);
 
     if (stop === 'length') {
       // context exhausted mid-action — surface instead of looping into a wall
@@ -452,3 +540,25 @@ async function* withBus<T>(
 
 // register the runtime reference so spawn.ts can launch child runs
 runAgentRef.current = runAgent;
+
+/**
+ * Token diet: tool results older than the last `keepLast` tool interactions
+ * get their output replaced with a stub (the call itself stays for history).
+ * Re-running the tool regenerates the output — near-lossless compaction.
+ */
+function clearStaleToolResults(messages: TurnMessage[], keepLast: number): void {
+  const toolIdx: number[] = [];
+  messages.forEach((m, i) => {
+    if (m.role === 'tool_result') toolIdx.push(i);
+  });
+  const stale = toolIdx.slice(0, Math.max(0, toolIdx.length - keepLast));
+  for (const i of stale) {
+    const m = messages[i]!;
+    if (m.role === 'tool_result' && m.content.length > 200) {
+      messages[i] = {
+        ...m,
+        content: `[output cleared — ${m.name} is re-runnable if needed]`,
+      };
+    }
+  }
+}

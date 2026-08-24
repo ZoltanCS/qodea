@@ -64,6 +64,7 @@ export async function getPage(opts?: { headless?: boolean }): Promise<any> {
   if (!page || page.isClosed()) {
     page = await context.newPage();
     page.setDefaultTimeout(20000);
+    attachPageLogging(page);
   }
   return page;
 }
@@ -162,4 +163,75 @@ export async function freshSnapshotLine(page: any): Promise<string> {
   const url = page.url();
   const title = await page.title().catch(() => '');
   return `${title} (${url})`;
+}
+
+/* ── live screencast + interaction (panel viewer) ── */
+
+let latestFrame: string | null = null;
+let cdp: any = null;
+let casting = false;
+const consoleBuf: Array<{ type: string; text: string }> = [];
+
+export function startScreencast(page: any): void {
+  if (casting) return;
+  casting = true;
+  void (async () => {
+    try {
+      cdp = await page.context().newCDPSession(page);
+      cdp.on('Page.screencastFrame', (ev: any) => {
+        latestFrame = ev.data;
+        cdp.send('Page.screencastFrameAck', { sessionId: ev.sessionId }).catch(() => {});
+      });
+      await cdp.send('Page.startScreencast', {
+        format: 'jpeg',
+        quality: 55,
+        maxWidth: 1280,
+        maxHeight: 800,
+        everyNthFrame: 1,
+      });
+    } catch {
+      casting = false;
+    }
+  })();
+}
+
+export function getLatestFrame(): string | null {
+  return latestFrame;
+}
+
+export async function clickAt(page: any, xPct: number, yPct: number): Promise<void> {
+  const vp = page.viewportSize() ?? { width: 1280, height: 800 };
+  await page.mouse.click(
+    Math.round((xPct / 100) * vp.width),
+    Math.round((yPct / 100) * vp.height),
+  );
+}
+
+export async function typeText(page: any, text: string, submit = false): Promise<void> {
+  await page.keyboard.type(text, { delay: 8 });
+  if (submit) await page.keyboard.press('Enter');
+}
+
+export async function pressKey(page: any, key: string): Promise<void> {
+  await page.keyboard.press(key);
+}
+
+export function getConsoleBuffer(): Array<{ type: string; text: string }> {
+  return consoleBuf.slice(-100);
+}
+
+export function clearConsoleBuffer(): void {
+  consoleBuf.length = 0;
+}
+
+/** Wire console/pageerror collection when a page is created. */
+export function attachPageLogging(page: any): void {
+  page.on('console', (msg: any) => {
+    if (consoleBuf.length > 200) consoleBuf.shift();
+    consoleBuf.push({ type: msg.type(), text: String(msg.text()).slice(0, 300) });
+  });
+  page.on('pageerror', (err: Error) => {
+    if (consoleBuf.length > 200) consoleBuf.shift();
+    consoleBuf.push({ type: 'pageerror', text: String(err?.message ?? err).slice(0, 300) });
+  });
 }

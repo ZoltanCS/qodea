@@ -2,8 +2,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { InvalidArgsError, type Tool } from './types.js';
 
-const MAX_LINES = 2000;
-const MAX_CHARS = 256 * 1024;
+const MAX_LINES = 400;
+const MAX_CHARS = 24_000;
 
 interface ReadArgs {
   path: string;

@@ -139,6 +139,11 @@ declare global {
       respondPermission(sessionId: string, requestId: string, approved: boolean): Promise<void>;
       stopSession(sessionId: string): Promise<void>;
       sendMessage(sessionId: string, text: string): Promise<void>;
+      browserFrame(): Promise<string | null>;
+      browserNavigate(url: string): Promise<string>;
+      browserClick(xPct: number, yPct: number): Promise<void>;
+      browserType(text: string): Promise<void>;
+      browserKey(key: string): Promise<void>;
       onEvent(callback: (sessionId: string, event: WireEvent) => void): () => void;
     };
   }

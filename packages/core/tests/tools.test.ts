@@ -174,6 +174,10 @@ describe('registry', () => {
       'browser_scroll',
       'browser_screenshot',
       'browser_close',
+      'browser_screencast',
+      'browser_type_text',
+      'browser_press_key',
+      'browser_console',
     ]);
 
     for (const t of tools) {

@@ -1454,3 +1454,25 @@ body {
 }
 .preset-chip:hover { border-color: var(--faint); background: var(--hover); }
 .preset-chip.on { border-color: #4e7cc2; background: rgba(90, 130, 190, 0.1); }
+
+/* ── browser tab (live viewer) ── */
+.browser-tab { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; }
+.bt-urlbar { display: flex; gap: 6px; }
+.bt-urlbar input {
+  flex: 1; background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; outline: none;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.bt-urlbar input:focus { border-color: #34435c; }
+.bt-urlbar button {
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--text); border-radius: 8px; padding: 5px 12px;
+  font-size: 12px; cursor: pointer;
+}
+.bt-urlbar button:hover { background: var(--hover); }
+.bt-frame {
+  width: 100%; border-radius: 10px; border: 1px solid var(--line);
+  cursor: crosshair; display: block; background: #fff;
+}
+.bt-wait { padding: 30px 16px; text-align: center; line-height: 1.6; }

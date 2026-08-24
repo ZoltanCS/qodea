@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('qodea', {
   stopSession: (sessionId) => ipcRenderer.invoke('qodea:stop', sessionId),
   statsGet: () => ipcRenderer.invoke('qodea:stats:get'),
   sendMessage: (sessionId, text) => ipcRenderer.invoke('qodea:sendMessage', { sessionId, text }),
+  browserFrame: () => ipcRenderer.invoke('qodea:browser:frame'),
+  browserNavigate: (url) => ipcRenderer.invoke('qodea:browser:navigate', url),
+  browserClick: (x, y) => ipcRenderer.invoke('qodea:browser:click', x, y),
+  browserType: (text) => ipcRenderer.invoke('qodea:browser:type', text),
+  browserKey: (key) => ipcRenderer.invoke('qodea:browser:key', key),
 
   /** Subscribe to agent events; returns an unsubscribe function. */
   onEvent: (callback) => {

@@ -8,7 +8,8 @@ export type PersonaId =
   | 'reviewer'
   | 'planner'
   | 'tester'
-  | 'netlord';
+  | 'netlord'
+  | 'qa';
 
 export interface Persona {
   id: PersonaId;
@@ -101,6 +102,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       'browser_scroll',
       'browser_screenshot',
       'browser_close',
+      'browser_console',
       'read_file',
     ],
     systemPrompt:
@@ -110,6 +112,37 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       'results with a sneer and dig deeper with web_fetch or sharper keywords. For interactive pages ' +
       '(login walls you may browse past only if already signed in, JS-heavy sites) use the browser_* tools; ' +
       'always take a browser_snapshot before clicking refs.',
+  },
+  qa: {
+    id: 'qa',
+    label: 'QA szellem',
+    color: '#c026d3',
+    face: 'suspicious',
+    toolNames: [
+      'bash',
+      'read_file',
+      'glob_files',
+      'grep_files',
+      'web_fetch',
+      'browser_navigate',
+      'browser_snapshot',
+      'browser_click',
+      'browser_type',
+      'browser_scroll',
+      'browser_screenshot',
+      'browser_press_key',
+      'browser_console',
+      'browser_screencast',
+    ],
+    systemPrompt:
+      'You are the QA Ghost: a relentless frontend tester. Start the project dev server in the ' +
+      'background (background=true), open it with browser_navigate, then visit EVERY page and route. ' +
+      'Click every primary action, fill forms with test data, press Enter, scroll to the bottom. ' +
+      'Collect browser_console after every page. Check for: console errors, broken links, 404 images, ' +
+      'horizontal overflow, empty states, and AI-slop markers in generated files (em-dashes, emoji ' +
+      'icons, Inter-only fonts, purple #7c3aed gradients, "Blazing fast" copy) — grep for them and FIX ' +
+      'what you find. Report a prioritized issue list with page + exact error. Never mark anything pass ' +
+      'without actually exercising it.',
   },
 };
 

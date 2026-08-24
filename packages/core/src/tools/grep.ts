@@ -4,7 +4,7 @@ import { globToRegExp, walkProject } from './fs-walk.js';
 import { InvalidArgsError, type Tool } from './types.js';
 
 const MAX_FILE_BYTES = 1024 * 1024;
-const DEFAULT_MAX_RESULTS = 100;
+const DEFAULT_MAX_RESULTS = 60;
 
 interface GrepArgs {
   pattern: string;

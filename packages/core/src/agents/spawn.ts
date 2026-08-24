@@ -41,9 +41,9 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
   return {
     name: 'spawn_agent',
     description:
-      'Launch a specialist sub-agent to work on a self-contained subtask in parallel. ' +
-      `Available agents: ${agentList}. Give it a short Hungarian display name and a complete, ` +
-      'self-sufficient instruction — the sub-agent cannot see your conversation.',
+      'Launch a specialist sub-agent for a self-contained subtask. Agents: ' +
+      agentList +
+      '. Give a short display name + complete instruction (child cannot see this chat).',
     kind: 'write',
     parametersJsonSchema: {
       type: 'object',
@@ -80,6 +80,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
       }
       const task = String(args.task ?? '').trim();
       if (!task) throw new InvalidArgsError('spawn_agent requires a "task" string');
+      const taskWithCwd = `[cwd: ${deps.cwd}]\n\n${task}`;
 
       const agent = deps.agents.find((a) => a.id === agentIdRaw) ?? deps.agents[0];
       const displayName =
@@ -110,7 +111,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
       const gen = runAgentRef.current({
         provider: deps.provider,
         model: deps.model,
-        task,
+        task: taskWithCwd,
         cwd: deps.cwd,
         mode: deps.mode,
         ...(deps.asker ? { asker: deps.asker } : {}),
@@ -119,7 +120,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
         depth: 1, // flat hierarchy — children never spawn
         tools: childTools,
         systemPrompt:
-          buildSystemPrompt({ cwd: deps.cwd, tools: childTools }) + '\n\n' + persona.prompt,
+          buildSystemPrompt() + '\n\n' + persona.prompt,
       });
 
       for (;;) {

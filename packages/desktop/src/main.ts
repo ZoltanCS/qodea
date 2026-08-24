@@ -495,6 +495,37 @@ function registerIpc(win: () => BrowserWindow): void {
     sessions.get(sessionId)?.abort.abort();
   });
 
+  // ── browser panel viewer (live frame + interaction) ──
+  ipcMain.handle('qodea:browser:frame', async () => {
+    const { getLatestFrame } = await import('@qodea/core');
+    return getLatestFrame();
+  });
+
+  ipcMain.handle('qodea:browser:navigate', async (_e, url: string) => {
+    const { getPage } = await import('@qodea/core');
+    const page = await getPage();
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    return page.url();
+  });
+
+  ipcMain.handle('qodea:browser:click', async (_e, xPct: number, yPct: number) => {
+    const { getPage, clickAt } = await import('@qodea/core');
+    const page = await getPage();
+    await clickAt(page, xPct, yPct);
+  });
+
+  ipcMain.handle('qodea:browser:type', async (_e, text: string) => {
+    const { getPage, typeText } = await import('@qodea/core');
+    const page = await getPage();
+    await typeText(page, text);
+  });
+
+  ipcMain.handle('qodea:browser:key', async (_e, key: string) => {
+    const { getPage, pressKey } = await import('@qodea/core');
+    const page = await getPage();
+    await pressKey(page, key);
+  });
+
   ipcMain.handle('qodea:sendMessage', (_event, payload: { sessionId: string; text: string }) => {
     sessions.get(payload.sessionId)?.injectQueue.items.push(payload.text);
   });

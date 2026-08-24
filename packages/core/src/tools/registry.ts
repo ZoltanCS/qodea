@@ -6,6 +6,7 @@ import { readTool } from './read.js';
 import { todoWriteTool } from './todo-write.js';
 import { webFetchTool, webSearchTool } from './web.js';
 import { createBrowserTools } from './web-browser.js';
+import { createBrowserPanelTools } from './browser/panel.js';
 import { writeTool } from './write.js';
 import type { ToolSpec } from '../types.js';
 import type { Tool } from './types.js';
@@ -23,6 +24,7 @@ export function createDefaultTools(): Tool[] {
     webSearchTool,
     webFetchTool,
     ...createBrowserTools(),
+    ...createBrowserPanelTools(),
   ];
 }
 

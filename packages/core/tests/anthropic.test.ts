@@ -67,7 +67,9 @@ describe('AnthropicProvider', () => {
       system?: string;
       messages?: Array<{ role: string }>;
     };
-    expect(sent.system).toBe('be terse');
+    // system is now a cached content-block array
+    const sentSystem = sent.system as unknown as Array<{ text: string }>;
+    expect(sentSystem[0]?.text).toBe('be terse');
     expect(sent.messages).toEqual([{ role: 'user', content: 'hello' }]);
   });
 

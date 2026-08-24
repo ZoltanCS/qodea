@@ -50,6 +50,14 @@ export { grepTool } from './tools/grep.js';
 export { bashTool } from './tools/bash.js';
 export { webSearchTool, webFetchTool } from './tools/web.js';
 export { createBrowserTools } from './tools/web-browser.js';
+export { createBrowserPanelTools } from './tools/browser/panel.js';
+export {
+  getPage,
+  clickAt,
+  typeText,
+  pressKey,
+  getLatestFrame,
+} from './tools/browser/controller.js';
 export { todoWriteTool, renderTodos } from './tools/todo-write.js';
 
 // ── permissions ──────────────────────────────────────────────────────────────
@@ -78,4 +86,4 @@ export {
   runAgentAuto,
   type AutoLoopOptions,
 } from './agent/auto.js';
-export { buildSystemPrompt, type PromptContext } from './agent/prompt.js';
+export { buildSystemPrompt } from './agent/prompt.js';

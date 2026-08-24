@@ -5,7 +5,7 @@ import { InvalidArgsError, type Tool } from './types.js';
 export const globTool: Tool = {
   name: 'glob_files',
   description:
-    'Find files by glob pattern (e.g. "src/**/*.ts", "*.json"). Skips node_modules, .git, build output. Returns up to 200 relative paths.',
+    'Find files by glob pattern (e.g. "src/**/*.ts", "*.json"). Skips node_modules, .git, build output. Returns up to 100 relative paths.',
   kind: 'read',
   parametersJsonSchema: {
     type: 'object',
@@ -30,7 +30,7 @@ export const globTool: Tool = {
 
     const rx = globToRegExp(pattern);
     const files = await walkProject({ root });
-    const hits = files.filter((f) => rx.test(f)).slice(0, 200);
+    const hits = files.filter((f) => rx.test(f)).slice(0, 100);
 
     if (hits.length === 0) return `No files match "${pattern}"`;
     return `${hits.length} match(es):\n${hits.join('\n')}`;

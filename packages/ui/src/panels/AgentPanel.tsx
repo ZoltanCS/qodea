@@ -4,6 +4,7 @@ import type { ChatItem, DeployedAgent, ExtraTab } from '../chat/useChatSession';
 import type { LifetimeStats } from '../ipc.d';
 import { estimateCost } from '../ui/pricing';
 import { Row } from '../chat/messageViews';
+import { BrowserTab } from './BrowserTab';
 
 export interface PersonaInfo {
   id: string;
@@ -124,6 +125,12 @@ export function AgentPanel(props: Props) {
             </span>
           </button>
         ))}
+        <button
+          className={`rp-tab${props.activeTab === 'browser' ? ' on' : ''}`}
+          onClick={() => props.onActivate('browser')}
+        >
+          Browser
+        </button>
         {props.openTabs.map((id) => {
           const agent = props.deployed.find((a) => a.id === id);
           if (!agent) return null;
@@ -154,6 +161,8 @@ export function AgentPanel(props: Props) {
       <div className="rp-content">
         {props.activeTab === 'usage' ? (
           <UsagePage usage={props.usage} lifetime={props.lifetime} />
+        ) : props.activeTab === 'browser' ? (
+          <BrowserTab />
         ) : props.activeTab.startsWith('file:') ? (
           (() => {
             const tab = props.extraTabs.find((t) => t.id === props.activeTab);

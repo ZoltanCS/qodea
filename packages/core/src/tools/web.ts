@@ -2,7 +2,7 @@ import { InvalidArgsError, type Tool } from './types.js';
 import { loadConfig } from '../config/loader.js';
 
 const MAX_RESULTS = 8;
-const MAX_FETCH_CHARS = 12_000;
+const MAX_FETCH_CHARS = 9_000;
 
 interface SearchResult {
   title: string;
@@ -150,7 +150,7 @@ export const webSearchTool: Tool = {
         return [
           `[forrás: ${attempt.src}]`,
           ...results.map(
-            (r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet.slice(0, 220)}`,
+            (r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet.slice(0, 160)}`,
           ),
         ].join('\n');
       } catch (err) {
