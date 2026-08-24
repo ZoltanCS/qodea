@@ -88,21 +88,13 @@ export function App() {
       <div className="composer-row">
         <Segmented
           options={[
-            { value: 'agent', label: 'Agent', hint: 'egy agent végzi a munkát' },
+            { value: 'agent', label: 'Agent', hint: 'egy agent végzi a munkát — automatikusan folytatja, míg kész' },
             { value: 'experts', label: 'Experts', hint: 'több szakértői al-agent dolgozik párhuzamosan' },
-            {
-              value: 'autonomous',
-              label: 'Auto',
-              hint: 'TELJESEN autonóm: órákig fut, hibánál magától újraindul (YOLO engedélyekkel)',
-            },
           ]}
           value={chat.uiMode}
           onChange={(v) => chat.setUiMode(v as typeof chat.uiMode)}
           accent="uimode"
         />
-        {chat.uiMode === 'autonomous' && (
-          <span className="auto-hint">autonóm · YOLO kényszer · watchdog 10p</span>
-        )}
         <Segmented
           options={MODES.map((m) => ({ value: m.value, label: m.label, hint: m.hint }))}
           value={chat.mode}
@@ -266,6 +258,13 @@ export function App() {
           activeTab={chat.activeAgentTab}
           onActivate={chat.setActiveAgentTab}
           onCloseTab={chat.closeAgentTab}
+          usage={{
+            calls: chat.usageCalls,
+            tokensUsed: chat.tokensUsed,
+            contextWindow: chat.contextWindow,
+            model: chat.model || chat.selectedProvider?.defaultModel || '',
+            messagesCount: chat.messagesCount,
+          }}
         />
       )}
 

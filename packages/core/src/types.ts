@@ -43,6 +43,8 @@ export function userMessage(content: string): TurnMessage {
 export interface Usage {
   inputTokens?: number;
   outputTokens?: number;
+  /** Prompt tokens served from cache (OpenAI/Anthropic detail fields). */
+  cachedTokens?: number;
 }
 
 export type StopReason = 'end' | 'tool-use' | 'length' | 'other';

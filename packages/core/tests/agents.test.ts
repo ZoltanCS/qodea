@@ -12,6 +12,7 @@ import {
   type ToolSpec,
 } from '../src/index.js';
 import { FakeProvider } from './fake-provider.js';
+import { mergeAgents } from '../src/index.js';
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -99,6 +100,7 @@ describe('multi-agent', () => {
       task: 'kutass és review-zz párhuzamosan',
       cwd,
       mode: 'yolo',
+      agents: mergeAgents(),
     });
 
     for (;;) {
@@ -197,6 +199,7 @@ describe('multi-agent', () => {
       task: 'indíts egy explorert',
       cwd,
       mode: 'yolo',
+      agents: mergeAgents(),
     });
 
     const events: AgentEvent[] = [];

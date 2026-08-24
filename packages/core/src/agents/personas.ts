@@ -116,3 +116,47 @@ export const PERSONAS: Record<PersonaId, Persona> = {
 export function isPersonaId(v: string): v is PersonaId {
   return Object.prototype.hasOwnProperty.call(PERSONAS, v);
 }
+
+/** Editable agent definition (built-ins + user-created). */
+export interface AgentDef {
+  id: string;
+  name: string;
+  color: string;
+  face: string;
+  tools: string[];
+  prompt: string;
+  /** Optional per-agent model override. */
+  model?: string;
+}
+
+export const BUILTIN_AGENTS: AgentDef[] = Object.values(PERSONAS).map((p) => ({
+  id: p.id,
+  name: p.label,
+  color: p.color,
+  face: p.face,
+  tools: [...p.toolNames],
+  prompt: p.systemPrompt,
+}));
+
+/** Built-ins overridden by same-id custom entries, custom ids appended. */
+export function mergeAgents(
+  custom?: Array<Partial<AgentDef> & { id: string }>,
+): AgentDef[] {
+  if (!custom || custom.length === 0) return [...BUILTIN_AGENTS];
+  const out: AgentDef[] = BUILTIN_AGENTS.map((a) => ({ ...a, tools: [...a.tools] }));
+  for (const c of custom) {
+    const idx = out.findIndex((a) => a.id === c.id);
+    if (idx >= 0) out[idx] = { ...out[idx], ...c } as AgentDef;
+    else
+      out.push({
+        id: c.id,
+        name: c.name ?? c.id,
+        color: c.color ?? '#9aa0a6',
+        face: c.face ?? 'neutral',
+        tools: [...(c.tools ?? [])],
+        prompt: c.prompt ?? '',
+        ...(c.model ? { model: c.model } : {}),
+      });
+  }
+  return out;
+}

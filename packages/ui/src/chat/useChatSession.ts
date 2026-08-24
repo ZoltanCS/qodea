@@ -65,9 +65,10 @@ export function useChatSession() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [uiMode, setUiModeState] = useState<'agent' | 'experts' | 'autonomous'>(
-    initialPrefs.uiMode ?? 'agent',
-  );
+  const [uiMode, setUiModeState] = useState<'agent' | 'experts'>(initialPrefs.uiMode ?? 'agent');
+
+  // ── usage stats (per LLM call) ──
+  const [usageCalls, setUsageCalls] = useState<Array<{ inTok: number; outTok: number; cached: number }>>([]);
 
   // ── multi-agent state ──
   const [deployedAgents, setDeployedAgents] = useState<DeployedAgent[]>([]);
@@ -352,6 +353,14 @@ export function useChatSession() {
         }
         case 'usage': {
           setTokensUsed((ev.inputTokens ?? 0) + (ev.outputTokens ?? 0));
+          setUsageCalls((prev) => [
+            ...prev,
+            {
+              inTok: ev.inputTokens ?? 0,
+              outTok: ev.outputTokens ?? 0,
+              cached: ev.cachedTokens ?? 0,
+            },
+          ]);
           break;
         }
         case 'auto-restart': {
@@ -489,6 +498,7 @@ export function useChatSession() {
     setAgentStreams({});
     setOpenAgentTabs([]);
     setActiveAgentTab('list');
+    setUsageCalls([]);
   }, [status]);
 
   const removeSession = useCallback(async (id: string) => {
@@ -542,6 +552,8 @@ export function useChatSession() {
     color,
     tokensUsed,
     contextWindow: selectedProvider?.contextWindow ?? 131072,
+    usageCalls,
+    messagesCount: items.filter((i) => i.kind === 'user' || i.kind === 'assistant').length,
     providers,
     selectedProvider,
     providerId,

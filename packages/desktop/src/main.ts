@@ -7,8 +7,8 @@ import {
   getEffectiveProviders,
   loadConfig,
   PROVIDER_PRESETS,
-  runAgent,
   runAgentAuto,
+  mergeAgents,
   configSchema,
   type AgentEvent,
   type AgentRunOptions,
@@ -147,7 +147,7 @@ interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
-  uiMode?: 'agent' | 'experts' | 'autonomous';
+  uiMode?: 'agent' | 'experts';
   history?: TurnMessage[];
 }
 
@@ -222,27 +222,22 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
       const runModel = req.model ?? entry.defaultModel;
       if (!runModel) throw new Error('no model specified for this provider');
 
+      const agents = mergeAgents(config.agents);
+
       const options: AgentRunOptions = {
         provider,
         model: runModel,
         task: req.task,
         cwd: req.cwd,
-        mode: req.uiMode === 'autonomous' ? 'yolo' : req.mode,
+        mode: req.mode,
         asker,
         signal: abort.signal,
+        agents,
       };
       if (req.history && req.history.length > 0) options.initialMessages = req.history;
       if (req.reasoningEffort) options.reasoningEffort = req.reasoningEffort;
 
-      if (req.uiMode === 'autonomous') {
-        // FULL AUTONOMY: hours-long run, auto-restart on errors, stall watchdog.
-        // The only exit: [DONE] marker, wall clock, restart limits, or user Stop.
-        options.systemSuffix =
-          '\n\nYou are running in FULL AUTONOMOUS mode. Drive the task forward continuously ' +
-          'without asking for confirmation. Work in focused cycles: act → verify → next step. ' +
-          'If something fails, diagnose and retry a different approach — never repeat a failed one. ' +
-          'When the ENTIRE goal is complete AND verified, end your final message with the single line: [DONE]';
-      } else {
+      {
         options.systemSuffix =
           req.uiMode === 'experts'
             ? '\n\nMulti-agent mode is available: you have a spawn_agent tool and specialist sub-agents ' +
@@ -253,16 +248,13 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
             : undefined;
       }
 
-      const iterator =
-        req.uiMode === 'autonomous'
-          ? runAgentAuto({
-              ...options,
-              wallClockMs: 8 * 3600_000,
-              stallTimeoutMs: 600_000,
-              maxRestarts: 60,
-              restartBaseDelayMs: 1500,
-            })
-          : runAgent(options);
+      const iterator = runAgentAuto({
+        ...options,
+        wallClockMs: 8 * 3600_000,
+        stallTimeoutMs: 600_000,
+        maxRestarts: 60,
+        restartBaseDelayMs: 1500,
+      });
 
       while (true) {
         const { value, done } = await iterator.next();
@@ -299,6 +291,8 @@ function registerIpc(win: () => BrowserWindow): void {
   ipcMain.handle('qodea:getConfig', async () => {
     const config = await loadConfig();
     const entries = getEffectiveProviders(config);
+    const { mergeAgents } = await import('@qodea/core');
+    const agents = mergeAgents(config.agents);
     return {
       defaultProvider: config.defaultProvider ?? entries[0]?.id ?? null,
       providers: entries.map((e) => ({
@@ -314,17 +308,35 @@ function registerIpc(win: () => BrowserWindow): void {
         azureDeployment: e.azure?.deployment ?? null,
         hasStoredKey: Boolean(e.apiKey),
       })),
+      agents: agents.map((a) => ({
+        ...a,
+        isBuiltin: !config.agents?.some((c) => c.id === a.id),
+      })),
     };
   });
 
   // ── settings: write back (preserving stored keys unless replaced/cleared) ─
   ipcMain.handle(
     'qodea:saveConfig',
-    async (_event, payload: { defaultProvider: string | null; providers: SaveDraft[] }) => {
+    async (_event, payload: {
+      defaultProvider: string | null;
+      providers: SaveDraft[];
+      agents?: Array<{
+        id: string;
+        name: string;
+        color?: string;
+        face?: string;
+        tools?: string[];
+        prompt?: string;
+        model?: string;
+      }>;
+    }) => {
       const prev = await loadConfig();
       const prevById = new Map(prev.providers.map((p) => [p.id, p]));
 
-      const providers: ProviderEntry[] = payload.providers.map((d) => {
+      let providers: ProviderEntry[];
+      if (payload.providers) {
+        providers = payload.providers.map((d) => {
         const old = prevById.get(d.id);
 
         let apiKey: string | undefined;
@@ -354,12 +366,28 @@ function registerIpc(win: () => BrowserWindow): void {
             : {}),
         };
         return entry;
-      });
+        });
+      } else {
+        providers = prev.providers;
+      }
 
       const validated = configSchema.parse({
         version: 1,
         defaultProvider: payload.defaultProvider ?? undefined,
         providers,
+        ...(Array.isArray(payload.agents)
+          ? {
+              agents: payload.agents.map((a) => ({
+                id: a.id,
+                name: a.name,
+                ...(a.color ? { color: a.color } : {}),
+                ...(a.face ? { face: a.face } : {}),
+                tools: a.tools ?? [],
+                prompt: a.prompt ?? '',
+                ...(a.model ? { model: a.model } : {}),
+              })),
+            }
+          : {}),
       });
 
       const file = `${qodeaDir()}/config.json`;

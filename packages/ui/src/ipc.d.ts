@@ -25,7 +25,7 @@ export interface StartRequest {
   mode: PermissionMode;
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
-  uiMode?: 'agent' | 'experts' | 'autonomous';
+  uiMode?: 'agent' | 'experts';
   history?: unknown[];
 }
 
@@ -69,6 +69,17 @@ export interface StoredSession extends SessionSummary {
   messages: Array<Record<string, unknown>>;
 }
 
+export interface AgentDef {
+  id: string;
+  name: string;
+  color?: string;
+  face?: string;
+  tools?: string[];
+  prompt?: string;
+  model?: string;
+  isBuiltin?: boolean;
+}
+
 export type WireEvent =
   | AgentEvent
   | { type: 'permission-request'; requestId: string; tool: string; summary: string }
@@ -93,10 +104,12 @@ declare global {
       getConfig(): Promise<{
         defaultProvider: string | null;
         providers: ProviderDraft[];
+        agents: AgentDef[];
       }>;
       saveConfig(payload: {
         defaultProvider: string | null;
-        providers: SaveDraft[];
+        providers?: SaveDraft[];
+        agents?: AgentDef[];
       }): Promise<{ savedTo: string }>;
       listModels(req: {
         id?: string;
@@ -105,6 +118,16 @@ declare global {
         azureEndpoint?: string;
         newApiKey?: string;
       }): Promise<{ models: string[] }>;
+      getConfig(): Promise<{
+        defaultProvider: string | null;
+        providers: ProviderDraft[];
+        agents: AgentDef[];
+      }>;
+      saveConfig(payload: {
+        defaultProvider: string | null;
+        providers?: SaveDraft[];
+        agents?: AgentDef[];
+      }): Promise<{ savedTo: string }>;
       startSession(req: StartRequest): Promise<{ sessionId: string }>;
       respondPermission(sessionId: string, requestId: string, approved: boolean): Promise<void>;
       stopSession(sessionId: string): Promise<void>;

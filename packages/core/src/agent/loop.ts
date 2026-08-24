@@ -11,6 +11,7 @@ import type {
 import { userMessage } from '../types.js';
 import { buildSystemPrompt } from './prompt.js';
 import { createSpawnAgentTool } from '../agents/spawn.js';
+import type { AgentDef } from '../agents/personas.js';
 import { isAbortError, runAgentRef } from './ref.js';
 
 /** Optional tagging so subagent events can be routed in the UI. */
@@ -26,7 +27,7 @@ export type AgentEvent =
   | ({ type: 'tool-start'; callId: string; name: string; summary: string } & EvTag)
   | ({ type: 'tool-result'; name: string; content: string; isError: boolean } & EvTag)
   | ({ type: 'permission-denied'; name: string; summary: string } & EvTag)
-  | ({ type: 'usage'; inputTokens?: number; outputTokens?: number } & EvTag)
+  | ({ type: 'usage'; inputTokens?: number; outputTokens?: number; cachedTokens?: number } & EvTag)
   | ({ type: 'done'; reason: 'complete' | 'max-turns' | 'aborted' | 'failed' | 'time-limit'; turns: number } & EvTag)
   | ({ type: 'auto-restart'; attempt: number; reason: string; delayMs: number } & EvTag)
   | ({ type: 'auto-note'; text: string } & EvTag)
@@ -69,6 +70,8 @@ export interface AgentRunOptions {
   signal?: AbortSignal;
   /** Route tag for this run's events ('main' = untagged). */
   agentId?: string;
+  /** Available sub-agent definitions — enables the spawn_agent tool at depth 0. */
+  agents?: AgentDef[];
   /** Subagents are only available at depth 0 (flat hierarchy by design). */
   depth?: number;
   enableSubagents?: boolean;
@@ -123,7 +126,8 @@ async function* runAgentInner(
   // ── subagent support (top level only) ──
   const bus: AgentEvent[] = [];
   const enableSubagents = (opts.enableSubagents ?? true) && !opts.depth;
-  if (enableSubagents) {
+  const effectiveAgents = opts.agents ?? [];
+  if (enableSubagents && effectiveAgents.length > 0) {
     const spawnTool = createSpawnAgentTool({
       provider: opts.provider,
       model: opts.model,
@@ -131,6 +135,7 @@ async function* runAgentInner(
       mode,
       ...(opts.asker ? { asker: opts.asker } : {}),
       parentSignal: opts.signal,
+      agents: effectiveAgents,
       publish: (ev) => bus.push(ev as AgentEvent),
     });
     tools.push(spawnTool);

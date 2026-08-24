@@ -1352,3 +1352,76 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ── usage page ── */
+.usage { display: flex; flex-direction: column; gap: 14px; }
+
+.u-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.u-pct { font-size: 18px; font-weight: 700; margin-top: -56px; color: var(--text); }
+.u-hero svg { margin-bottom: 18px; }
+
+.u-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.u-stat {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.u-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+.u-value { font-size: 15px; font-weight: 600; }
+
+.u-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 90px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.u-bar {
+  flex: 1;
+  min-width: 6px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #7aa2f2, #4e6fb8);
+  transition: height 0.3s;
+}
+
+/* ── agent config cards (settings) ── */
+.ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.ac-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 11px 13px; cursor: pointer;
+  text-align: left; font-family: inherit;
+  transition: border-color 0.13s, background 0.13s;
+}
+.ac-card:hover { border-color: var(--faint); background: var(--hover); }
+.ac-card.on { border-color: #4e7cc2; background: rgba(90, 130, 190, 0.08); }
+.ac-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.ac-role { font-size: 11px; color: var(--faint); }
+.ac-plus { justify-content: center; color: var(--faint); border-style: dashed; }
+.ac-plus:hover { color: var(--text); }
+
+.ac-form { display: flex; flex-direction: column; gap: 11px; max-width: 460px; }
+.ac-form .field input, .ac-form .field select, .ac-form textarea {
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; outline: none;
+  font-family: inherit; width: 100%; resize: vertical;
+}
+.ac-form textarea { min-height: 110px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.ac-form input:focus, .ac-form select:focus, .ac-form textarea:focus { border-color: #34435c; }
+
+.tools-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 4px 9px; font-size: 11.5px; cursor: pointer;
+  color: var(--dim); background: var(--panel); font-family: ui-monospace, Consolas, monospace;
+}
+.tool-check.on { color: var(--text); border-color: #4e7cc2; background: rgba(90,130,190,0.1); }

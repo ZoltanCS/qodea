@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ProviderDraft, SaveDraft } from '../ipc.d';
 import type { PermissionMode } from '@qodea/core';
 import { QodeaBot } from '../mascot/QodeaBot';
+import { Avatar } from '../avatar/Avatar';
+import type { AvatarCfg } from '../avatar/avatarConfig';
 import { Icon, type IconName } from '../ui/Icon';
 import { loadPrefs, savePrefs } from '../chat/prefs';
 
@@ -115,12 +117,29 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
+  // agents
+  const [agentCards, setAgentCards] = useState<AgentCard[]>([]);
+  const [defaultProvider, setDefaultProvider] = useState<string | null>(null);
+
   useEffect(() => {
     void window.qodea
       .getConfig()
       .then((res) => {
         const ds = res.providers.map((p) => toDraft(p, p.id === res.defaultProvider));
         setDrafts(ds.length > 0 ? ds : [blankDraft()]);
+        setAgentCards(
+          res.agents.map((a) => ({
+            id: a.id,
+            name: a.name,
+            color: a.color ?? '#9aa0a6',
+            face: a.face ?? 'neutral',
+            tools: a.tools ?? [],
+            prompt: a.prompt ?? '',
+            model: a.model ?? '',
+            isBuiltin: a.isBuiltin ?? true,
+          })),
+        );
+        setDefaultProvider(res.defaultProvider);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : String(err));
@@ -211,6 +230,15 @@ export function Settings({ onClose }: { onClose: () => void }) {
       const res = await window.qodea.saveConfig({
         defaultProvider: def ? def.id.trim() : null,
         providers,
+        agents: agentCards.map((a) => ({
+          id: a.id.trim(),
+          name: a.name.trim(),
+          color: a.color,
+          face: a.face,
+          tools: a.tools,
+          prompt: a.prompt,
+          ...(a.model.trim() ? { model: a.model.trim() } : {}),
+        })),
       });
       setSavedMsg(`Mentve: ${res.savedTo}`);
       setTimeout(() => setSavedMsg(null), 2500);
@@ -274,7 +302,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
               <div className="dim pad">Betöltés…</div>
             ))}
 
-          {tab === 'agents' && <AgentsTab />}
+          {tab === 'agents' && (
+            <AgentsTab
+              agents={agentCards}
+              setAgents={setAgentCards}
+              onSave={() => void saveProviders()}
+              defaultProvider={defaultProvider}
+            />
+          )}
 
           {tab === 'general' && (
             <Placeholder
@@ -505,80 +540,203 @@ function ProvidersEditor(props: {
   );
 }
 
-/* ── Agents tab ──────────────────────────────────────────────────────────── */
+/* ── Agents tab: card grid + full editor ─────────────────────────────────── */
 
-function AgentsTab() {
-  const initial = loadPrefs();
-  const [mode, setMode] = useState<PermissionMode>(initial.mode ?? 'default');
-  const [uiMode, setUiModeState] = useState<'agent' | 'experts' | 'autonomous'>(
-    initial.uiMode ?? 'agent',
-  );
-  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>(initial.effort ?? 'medium');
-  const [yoloHint, setYoloHint] = useState(mode === 'yolo');
+const ALL_TOOLS = [
+  'read_file', 'write_file', 'edit_file', 'glob_files', 'grep_files', 'bash',
+  'todo_write', 'web_search', 'web_fetch', 'browser_navigate', 'browser_snapshot',
+  'browser_click', 'browser_type', 'browser_scroll', 'browser_screenshot', 'browser_close',
+];
 
-  const apply = (next: {
-    mode?: PermissionMode;
-    uiMode?: 'agent' | 'experts' | 'autonomous';
-    effort?: 'low' | 'medium' | 'high';
-  }) => {
-    const merged = {
-      mode: next.mode ?? mode,
-      uiMode: next.uiMode ?? uiMode,
-      effort: next.effort ?? effort,
-    };
-    setMode(merged.mode);
-    setUiModeState(merged.uiMode);
-    setEffort(merged.effort);
-    setYoloHint(merged.mode === 'yolo');
-    savePrefs(merged);
-    window.dispatchEvent(new Event('qodea-prefs-changed'));
+const FACE_OPTIONS = [
+  'neutral', 'attentive', 'surprised', 'excited', 'happy', 'laughing', 'angry',
+  'sad', 'scared', 'suspicious', 'confused', 'curious', 'proud', 'shy',
+  'unimpressed', 'sleepy',
+];
+
+const AGENT_COLORS = [
+  '#3d8bfd', '#3fae6a', '#f08b1f', '#8a63e8', '#e2503c',
+  '#39b8a0', '#e05fc0', '#eec93d', '#9aa0a6', '#f4f2ec',
+];
+
+interface AgentCard {
+  id: string;
+  name: string;
+  color: string;
+  face: string;
+  tools: string[];
+  prompt: string;
+  model: string;
+  isBuiltin: boolean;
+}
+
+function AgentsTab({
+  agents,
+  setAgents,
+  onSave,
+  defaultProvider,
+}: {
+  agents: AgentCard[];
+  setAgents: (a: AgentCard[]) => void;
+  onSave: () => void;
+  defaultProvider: string | null;
+}) {
+  const [selIdx, setSelIdx] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const sel = selIdx !== null ? agents[selIdx] : null;
+
+  const patch = (p: Partial<AgentCard>) => {
+    if (selIdx === null) return;
+    setAgents(agents.map((a, i) => (i === selIdx ? { ...a, ...p } : a)));
+  };
+
+  const addAgent = () => {
+    const id = `custom-${Date.now().toString(36)}`;
+    setAgents([
+      ...agents,
+      {
+        id,
+        name: 'Új agent',
+        color: AGENT_COLORS[agents.length % AGENT_COLORS.length]!,
+        face: 'neutral',
+        tools: ['read_file', 'glob_files', 'grep_files'],
+        prompt: '',
+        model: '',
+        isBuiltin: false,
+      },
+    ]);
+    setSelIdx(agents.length);
+  };
+
+  const removeAgent = () => {
+    if (selIdx === null) return;
+    setAgents(agents.filter((_, i) => i !== selIdx));
+    setSelIdx(null);
   };
 
   return (
-    <div className="agents-pane">
-      <h3 className="p-h">Alapértelmezett munkamód</h3>
-      <div className="seg uimode">
-        <button className={uiMode === 'agent' ? 'on' : ''} onClick={() => apply({ uiMode: 'agent' })}>
-          Agent
-        </button>
-        <button className={uiMode === 'experts' ? 'on' : ''} onClick={() => apply({ uiMode: 'experts' })}>
-          Experts
-        </button>
-      </div>
-
-      <h3 className="p-h">Engedélyek</h3>
-      <div className="seg mode">
-        {[
-          { v: 'read-only' as const, l: 'Read-only' },
-          { v: 'default' as const, l: 'Ask' },
-          { v: 'yolo' as const, l: 'YOLO' },
-        ].map((m) => (
+    <div className="agents-config">
+      <div className="ac-grid">
+        {agents.map((a, i) => (
           <button
-            key={m.v}
-            className={`${mode === m.v ? 'on' : ''}${m.v === 'yolo' ? ' yolo' : ''}`}
-            onClick={() => apply({ mode: m.v })}
+            key={a.id}
+            className={`ac-card${i === selIdx ? ' on' : ''}`}
+            onClick={() => setSelIdx(i)}
           >
-            {m.l}
+            <Avatar
+              cfg={{ shape: 'circle', face: (a.face as AvatarCfg['face']) ?? 'neutral', color: a.color }}
+              size={38}
+              animate
+            />
+            <span className="ac-txt">
+              <span className="ac-name">{a.name}</span>
+              <span className="ac-role">
+                {a.tools.length} tool{a.model ? ` · ${a.model}` : ''}
+                {a.isBuiltin ? ' · beépített' : ' · saját'}
+              </span>
+            </span>
           </button>
         ))}
+        <button className="ac-card ac-plus" onClick={addAgent}>
+          + Új agent
+        </button>
       </div>
-      {yoloHint && (
-        <p className="f-hint warn">A YOLO mód minden műveletet engedélyez kérdezés nélkül.</p>
+
+      {sel && (
+        <div className="ac-form">
+          <Field label="Azonosító">
+            <input value={sel.id} disabled={sel.isBuiltin} onChange={(e) => patch({ id: e.target.value })} />
+          </Field>
+
+          <Field label="Név">
+            <input value={sel.name} onChange={(e) => patch({ name: e.target.value })} />
+          </Field>
+
+          <Field label="Szín">
+            <div className="swatches" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
+              {AGENT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className={`swatch${sel.color === c ? ' on' : ''}`}
+                  style={{ background: c, width: 28, height: 28 }}
+                  onClick={() => patch({ color: c })}
+                />
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Arc">
+            <select value={sel.face} onChange={(e) => patch({ face: e.target.value })}>
+              {FACE_OPTIONS.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Modell (üres = alapértelmezett)">
+            <input
+              value={sel.model}
+              onChange={(e) => patch({ model: e.target.value })}
+              placeholder={defaultProvider ?? 'modell neve'}
+            />
+          </Field>
+
+          <Field label="Rendszerprompt" hint="Kiegészíti az alap promptot — személyiség, szabályok, fókusz.">
+            <textarea
+              value={sel.prompt}
+              onChange={(e) => patch({ prompt: e.target.value })}
+              placeholder="Te vagy X, a … specialista. …"
+            />
+          </Field>
+
+          <Field label="Engedélyezett toolok">
+            <div className="tools-checks">
+              {ALL_TOOLS.map((t) => (
+                <button
+                  key={t}
+                  className={`tool-check${sel.tools.includes(t) ? ' on' : ''}`}
+                  onClick={() =>
+                    patch({
+                      tools: sel.tools.includes(t)
+                        ? sel.tools.filter((x) => x !== t)
+                        : [...sel.tools, t],
+                    })
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {!sel.isBuiltin && (
+            <button className="btn del" onClick={removeAgent}>
+              Agent törlése
+            </button>
+          )}
+          {sel.isBuiltin && (
+            <p className="f-hint">Beépített agent — a módosítások felülírják az alapértelmezéseit.</p>
+          )}
+
+          <div className="pane-actions">
+            {error && <span className="err" style={{ color: '#e2705a', fontSize: 12 }}>{error}</span>}
+            <span className="spacer" />
+            <button
+              className="btn primary"
+              onClick={() => {
+                if (!sel.id.trim() || !sel.name.trim()) {
+                  setError('Az azonosító és a név kötelező.');
+                  return;
+                }
+                setError(null);
+                onSave();
+              }}
+            >
+              Mentés
+            </button>
+          </div>
+        </div>
       )}
-
-      <h3 className="p-h">Thinking effort</h3>
-      <div className="seg effort">
-        {(['low', 'medium', 'high'] as const).map((e) => (
-          <button key={e} className={effort === e ? 'on' : ''} onClick={() => apply({ effort: e })}>
-            {e === 'low' ? 'Low' : e === 'medium' ? 'Med' : 'High'}
-          </button>
-        ))}
-      </div>
-
-      <p className="f-hint">
-        Ezek az alapértékek minden új beszélgetésre érvényesek; a komposer sávjában futás közben
-        is átállíthatók.
-      </p>
     </div>
   );
 }

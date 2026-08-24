@@ -2,14 +2,14 @@ import type { PermissionMode } from '@qodea/core';
 
 export interface AgentPrefs {
   mode: PermissionMode;
-  uiMode: 'agent' | 'experts' | 'autonomous';
+  uiMode: 'agent' | 'experts';
   effort: 'low' | 'medium' | 'high';
 }
 
 const KEY = 'qodea-prefs';
 
 const MODES: PermissionMode[] = ['read-only', 'default', 'yolo'];
-const UIMODES = ['agent', 'experts', 'autonomous'] as const;
+const UIMODES = ['agent', 'experts'] as const;
 const EFFORTS = ['low', 'medium', 'high'] as const;
 
 export function loadPrefs(): Partial<AgentPrefs> {

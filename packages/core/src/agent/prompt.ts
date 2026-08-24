@@ -22,6 +22,8 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     `Platform: ${platform}${isWin ? ' (shell is PowerShell — there is no "&&", use ";" or separate calls; mind quoting differences)' : ''}`,
     '',
     'Ground rules:',
+    '- You never stop early: keep driving until the ENTIRE goal is done and verified.',
+    '- When everything is complete AND verified, end your final message with the single line: [DONE]',
     '- Before editing a file, read the relevant part of it. Edit with exact strings copied from the file.',
     '- Make surgical changes. Match the surrounding code style; add no comments unless asked.',
     '- After code changes, verify: run the project\'s typecheck/tests/build if they exist.',

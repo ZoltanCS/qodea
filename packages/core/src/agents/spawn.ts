@@ -4,7 +4,7 @@ import { buildSystemPrompt } from '../agent/prompt.js';
 import { runAgentRef } from '../agent/ref.js';
 import type { PermissionAsker, PermissionMode } from '../permissions/manager.js';
 import type { Provider } from '../types.js';
-import { isPersonaId, PERSONAS } from './personas.js';
+import type { AgentDef } from './personas.js';
 
 /** Events a spawned child pushes back onto the shared bus. */
 type PublishFn = (ev: Record<string, unknown> & { agentId: string }) => void;
@@ -16,6 +16,8 @@ export interface SpawnDeps {
   mode: PermissionMode;
   asker?: PermissionAsker;
   parentSignal?: AbortSignal;
+  /** Available agent definitions (built-ins merged with user config). */
+  agents: AgentDef[];
   /** Receives child events, already tagged with the child's agentId. */
   publish: PublishFn;
 }
@@ -29,20 +31,18 @@ interface SpawnArgs {
 let counter = 0;
 
 /**
- * The `spawn_agent` tool: launches a full sub-run with the chosen persona,
+ * The `spawn_agent` tool: launches a full sub-run with the chosen agent def,
  * restricted toolset and its own context window. Flat hierarchy by design —
  * children cannot spawn further agents.
  */
 export function createSpawnAgentTool(deps: SpawnDeps): Tool {
-  const personaList = Object.values(PERSONAS)
-    .map((p) => `${p.id} (${p.label})`)
-    .join(', ');
+  const agentList = deps.agents.map((a) => `${a.id} (${a.name})`).join(', ');
 
   return {
     name: 'spawn_agent',
     description:
       'Launch a specialist sub-agent to work on a self-contained subtask in parallel. ' +
-      `Available agents: ${personaList}. Give it a short Hungarian display name and a complete, ` +
+      `Available agents: ${agentList}. Give it a short Hungarian display name and a complete, ` +
       'self-sufficient instruction — the sub-agent cannot see your conversation.',
     kind: 'write',
     parametersJsonSchema: {
@@ -50,7 +50,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
       properties: {
         agent: {
           type: 'string',
-          enum: Object.keys(PERSONAS),
+          enum: deps.agents.map((a) => a.id),
           description: 'Which specialist to launch.',
         },
         name: {
@@ -74,17 +74,18 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
     async run(rawArgs) {
       const args = rawArgs as unknown as SpawnArgs;
       const agentIdRaw = String(args.agent ?? '');
-      if (!isPersonaId(agentIdRaw)) {
-        throw new InvalidArgsError(`Unknown agent "${agentIdRaw}". Available: ${personaList}`);
+      const persona = deps.agents.find((a) => a.id === agentIdRaw);
+      if (!persona) {
+        throw new InvalidArgsError(`Unknown agent "${agentIdRaw}". Available: ${agentList}`);
       }
       const task = String(args.task ?? '').trim();
       if (!task) throw new InvalidArgsError('spawn_agent requires a "task" string');
 
-      const persona = PERSONAS[agentIdRaw];
+      const agent = deps.agents.find((a) => a.id === agentIdRaw) ?? deps.agents[0];
       const displayName =
         typeof args.name === 'string' && args.name.trim()
           ? args.name.trim().slice(0, 40)
-          : persona.label;
+          : persona.name;
 
       const childId = `ag_${++counter}_${Math.random().toString(36).slice(2, 7)}`;
       const startedAt = Date.now();
@@ -100,7 +101,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
       });
 
       const childTools = createDefaultTools().filter((t) =>
-        (persona.toolNames as string[]).includes(t.name),
+        (persona.tools).includes(t.name),
       );
 
       let finalText = '';
@@ -118,7 +119,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
         depth: 1, // flat hierarchy — children never spawn
         tools: childTools,
         systemPrompt:
-          buildSystemPrompt({ cwd: deps.cwd, tools: childTools }) + '\n\n' + persona.systemPrompt,
+          buildSystemPrompt({ cwd: deps.cwd, tools: childTools }) + '\n\n' + persona.prompt,
       });
 
       for (;;) {
@@ -146,7 +147,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
         throw Object.assign(new Error('subagent aborted'), { name: 'AbortError' });
       }
 
-      const header = `[${displayName} · ${persona.label} · ${reason}]`;
+      const header = `[${displayName} · ${persona.name} · ${reason}]`;
       return `${header}\n${finalText || '(nincs szöveges válasz)'}`;
     },
   };

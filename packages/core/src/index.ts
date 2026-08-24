@@ -62,7 +62,15 @@ export {
 } from './permissions/manager.js';
 
 export { createSpawnAgentTool } from './agents/spawn.js';
-export { PERSONAS, isPersonaId, type Persona, type PersonaId } from './agents/personas.js';
+export {
+  PERSONAS,
+  isPersonaId,
+  mergeAgents,
+  BUILTIN_AGENTS,
+  type Persona,
+  type PersonaId,
+  type AgentDef,
+} from './agents/personas.js';
 
 // ── agent ────────────────────────────────────────────────────────────────────
 export { runAgent, type AgentEvent, type AgentRunOptions, type AgentRunResult } from './agent/loop.js';

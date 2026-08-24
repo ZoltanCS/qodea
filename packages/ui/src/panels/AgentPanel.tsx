@@ -20,6 +20,14 @@ const BUILTIN: PersonaInfo[] = [
   { id: 'netlord', label: 'Netlord', color: '#39b8a0', face: 'proud', desc: 'pökhendi webes kutató' },
 ];
 
+export interface UsageStats {
+  calls: Array<{ inTok: number; outTok: number; cached: number }>;
+  tokensUsed: number;
+  contextWindow: number;
+  model: string;
+  messagesCount: number;
+}
+
 interface Props {
   deployed: DeployedAgent[];
   streams: Record<string, ChatItem[]>;
@@ -27,6 +35,29 @@ interface Props {
   activeTab: string;
   onActivate: (tabId: string) => void;
   onCloseTab: (id: string) => void;
+  usage: UsageStats;
+}
+
+/** Rough USD/1M-token pricing by model substring. */
+const PRICING: Array<[RegExp, number, number]> = [
+  [/gpt-4o-mini/i, 0.15, 0.6],
+  [/gpt-4o/i, 2.5, 10],
+  [/gpt-4\.1-mini/i, 0.4, 1.6],
+  [/gpt-4\.1/i, 2, 8],
+  [/gpt-5-mini/i, 0.4, 1.6],
+  [/gpt-5/i, 1.25, 10],
+  [/claude-sonnet/i, 3, 15],
+  [/claude-haiku/i, 0.8, 4],
+  [/claude-opus/i, 15, 75],
+  [/deepseek/i, 0.27, 1.1],
+  [/grok/i, 3, 15],
+];
+
+function estimateCost(model: string, inTok: number, outTok: number): number | null {
+  for (const [re, pin, pout] of PRICING) {
+    if (re.test(model)) return (inTok / 1e6) * pin + (outTok / 1e6) * pout;
+  }
+  return null;
 }
 
 function personaAvatar(
@@ -90,6 +121,12 @@ export function AgentPanel(props: Props) {
         >
           Agentek
         </button>
+        <button
+          className={`rp-tab${props.activeTab === 'usage' ? ' on' : ''}`}
+          onClick={() => props.onActivate('usage')}
+        >
+          Usage
+        </button>
         {props.openTabs.map((id) => {
           const agent = props.deployed.find((a) => a.id === id);
           if (!agent) return null;
@@ -118,7 +155,9 @@ export function AgentPanel(props: Props) {
 
       {/* content */}
       <div className="rp-content">
-        {props.activeTab === 'list' ? (
+        {props.activeTab === 'usage' ? (
+          <UsagePage usage={props.usage} />
+        ) : props.activeTab === 'list' ? (
           <>
             <SectionTitle>Futó / deployolt</SectionTitle>
             {running.length === 0 && finished.length === 0 && (
@@ -183,6 +222,88 @@ export function AgentPanel(props: Props) {
         )}
       </div>
     </aside>
+  );
+}
+
+/* ── usage page ── */
+
+function UsagePage({ usage }: { usage: UsageStats }) {
+  const inTok = usage.calls.reduce((s, c) => s + c.inTok, 0);
+  const outTok = usage.calls.reduce((s, c) => s + c.outTok, 0);
+  const cached = usage.calls.reduce((s, c) => s + c.cached, 0);
+  const cost = estimateCost(usage.model, inTok, outTok);
+  const pct = Math.min(
+    100,
+    Math.round((usage.tokensUsed / Math.max(1, usage.contextWindow)) * 100),
+  );
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  const col = pct < 55 ? '#6fbf8f' : pct < 80 ? '#d78f3f' : '#e25b43';
+  const maxBar = Math.max(1, ...usage.calls.map((c) => c.inTok + c.outTok));
+
+  return (
+    <div className="usage">
+      <div className="u-hero">
+        <svg viewBox="0 0 80 80" width="84" height="84">
+          <circle cx="40" cy="40" r={R} fill="none" stroke="var(--line-soft)" strokeWidth="7" />
+          <circle
+            cx="40"
+            cy="40"
+            r={R}
+            fill="none"
+            stroke={col}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${(C * pct) / 100} ${C}`}
+            transform="rotate(-90 40 40)"
+          />
+        </svg>
+        <div className="u-pct">{pct}%</div>
+      </div>
+
+      <div className="u-grid">
+        <StatCard label="Token be" value={inTok.toLocaleString('hu-HU')} />
+        <StatCard label="Token ki" value={outTok.toLocaleString('hu-HU')} />
+        <StatCard label="Cache" value={cached ? cached.toLocaleString('hu-HU') : '—'} />
+        <StatCard
+          label="Költség (becslés)"
+          value={cost === null ? '—' : `$${cost.toFixed(4)}`}
+        />
+        <StatCard label="Üzenetek" value={String(usage.messagesCount)} />
+        <StatCard label="Hívások" value={String(usage.calls.length)} />
+      </div>
+
+      <SectionTitle>Hívások token-felhasználása</SectionTitle>
+      {usage.calls.length === 0 ? (
+        <div className="rp-empty">Még nincs hívás ebben a sessionben.</div>
+      ) : (
+        <div className="u-bars">
+          {usage.calls.map((c, i) => {
+            const h = Math.round(((c.inTok + c.outTok) / maxBar) * 100);
+            return (
+              <div
+                key={i}
+                className="u-bar"
+                style={{ height: `${Math.max(6, h)}%` }}
+                title={`#${i + 1}: be ${c.inTok} · ki ${c.outTok}`}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {usage.model && <div className="t-dim" style={{ marginTop: 10 }}>modell: {usage.model}</div>}
+      <div className="t-dim">context: {usage.tokensUsed.toLocaleString('hu-HU')} / {usage.contextWindow.toLocaleString('hu-HU')} token</div>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="u-stat">
+      <span className="u-label">{label}</span>
+      <span className="u-value">{value}</span>
+    </div>
   );
 }
 

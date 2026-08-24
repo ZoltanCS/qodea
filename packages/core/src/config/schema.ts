@@ -30,10 +30,21 @@ export const providerEntrySchema = z.object({
     .optional(),
 });
 
+export const agentDefSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  color: z.string().optional(),
+  face: z.string().optional(),
+  tools: z.array(z.string()).default([]),
+  prompt: z.string().default(''),
+  model: z.string().optional(),
+});
+
 export const configSchema = z.object({
   version: z.literal(1).default(1),
   defaultProvider: z.string().optional(),
   providers: z.array(providerEntrySchema).default([]),
+  agents: z.array(agentDefSchema).optional(),
   web: z
     .object({
       searxngUrl: z.string().url().optional(),
