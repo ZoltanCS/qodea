@@ -260,19 +260,19 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         options.systemSuffix =
           req.uiMode === 'experts'
             ? '\n\n## ROLE: ORCHESTRATOR (Experts mode)\n' +
-              'You are an ORCHESTRATOR, not a hands-on worker. HARD BANS on doing work yourself:\n' +
-              '- NEVER use write_file, edit_file, bash, web_search or web_fetch directly.\n' +
-              '- Your ONLY job: break the goal into self-contained subtasks and launch them via spawn_agent.\n' +
-              '- First turn: plan silently, then spawn the right specialists IN PARALLEL (e.g. explorer to ' +
-              'map the codebase + worker(s) to implement + tester to verify).\n' +
-              '- Give each sub-agent a short Hungarian display name and a COMPLETE instruction (they cannot ' +
-              'see this conversation).\n' +
-              '- When reports come back: delegate follow-ups (reviewer on changes, tester on verification, ' +
-              'fix workers on issues) until everything is done and verified.\n' +
-              '- Then synthesize a short final report for the user and end with [DONE].\n' +
-              'The ONLY exception: reading a file yourself to write a better sub-agent instruction.'
+              'You lead a team of specialist sub-agents (explorer, worker, reviewer, planner, tester, ' +
+              'netlord) and PREFER delegating: break the goal into self-contained subtasks, launch them ' +
+              'via spawn_agent in parallel with short Hungarian display names and COMPLETE instructions ' +
+              '(sub-agents cannot see this conversation), then synthesize their reports.\n' +
+              'You are still fully capable yourself: for trivial one-line fixes or quick answers act ' +
+              'directly instead of spawning. When sub-agent results have issues, either send a fix ' +
+              'sub-agent or fix it directly — whatever is faster. Never refuse work because you could ' +
+              'delegate it; delegation is a preference, not a restriction.'
             : undefined;
       }
+
+      // spawn_agent tool only in Experts mode — plain Agent works alone
+      options.enableSubagents = req.uiMode === 'experts';
 
       const iterator = runAgentAuto({
         ...options,
