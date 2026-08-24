@@ -1433,3 +1433,24 @@ body {
   background: transparent;
 }
 .q-tag { font-size: 10px; color: var(--faint); margin-left: 6px; }
+
+/* ── profile stats + presets ── */
+.prof-stats { width: 100%; margin-bottom: 14px; }
+.ps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ps-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 11px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ps-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+.ps-value { font-size: 14px; font-weight: 600; }
+
+.preset-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.preset-chip {
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--text); border-radius: 999px;
+  padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  transition: border-color 0.13s, background 0.13s;
+}
+.preset-chip:hover { border-color: var(--faint); background: var(--hover); }
+.preset-chip.on { border-color: #4e7cc2; background: rgba(90, 130, 190, 0.1); }

@@ -80,6 +80,11 @@ export interface AgentDef {
   isBuiltin?: boolean;
 }
 
+export interface LifetimeStats {
+  models: Record<string, { inTok: number; outTok: number; cachedTok: number; calls: number }>;
+  updatedAt: number;
+}
+
 export type WireEvent =
   | AgentEvent
   | { type: 'permission-request'; requestId: string; tool: string; summary: string }
@@ -101,6 +106,7 @@ declare global {
       projectsList(): Promise<ProjectInfo[]>;
       projectAdd(): Promise<ProjectInfo | null>;
       projectDelete(id: string): Promise<void>;
+      statsGet(): Promise<LifetimeStats>;
       getConfig(): Promise<{
         defaultProvider: string | null;
         providers: ProviderDraft[];
@@ -118,6 +124,7 @@ declare global {
         azureEndpoint?: string;
         newApiKey?: string;
       }): Promise<{ models: string[] }>;
+      statsGet(): Promise<LifetimeStats>;
       getConfig(): Promise<{
         defaultProvider: string | null;
         providers: ProviderDraft[];

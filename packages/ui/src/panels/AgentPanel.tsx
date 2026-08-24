@@ -1,6 +1,8 @@
 import { Avatar } from '../avatar/Avatar';
 import type { AvatarCfg } from '../avatar/avatarConfig';
 import type { ChatItem, DeployedAgent, ExtraTab } from '../chat/useChatSession';
+import type { LifetimeStats } from '../ipc.d';
+import { estimateCost } from '../ui/pricing';
 import { Row } from '../chat/messageViews';
 
 export interface PersonaInfo {
@@ -37,28 +39,7 @@ interface Props {
   onCloseTab: (id: string) => void;
   extraTabs: ExtraTab[];
   usage: UsageStats;
-}
-
-/** Rough USD/1M-token pricing by model substring. */
-const PRICING: Array<[RegExp, number, number]> = [
-  [/gpt-4o-mini/i, 0.15, 0.6],
-  [/gpt-4o/i, 2.5, 10],
-  [/gpt-4\.1-mini/i, 0.4, 1.6],
-  [/gpt-4\.1/i, 2, 8],
-  [/gpt-5-mini/i, 0.4, 1.6],
-  [/gpt-5/i, 1.25, 10],
-  [/claude-sonnet/i, 3, 15],
-  [/claude-haiku/i, 0.8, 4],
-  [/claude-opus/i, 15, 75],
-  [/deepseek/i, 0.27, 1.1],
-  [/grok/i, 3, 15],
-];
-
-function estimateCost(model: string, inTok: number, outTok: number): number | null {
-  for (const [re, pin, pout] of PRICING) {
-    if (re.test(model)) return (inTok / 1e6) * pin + (outTok / 1e6) * pout;
-  }
-  return null;
+  lifetime: import('../ipc.d').LifetimeStats | null;
 }
 
 function personaAvatar(
@@ -172,7 +153,7 @@ export function AgentPanel(props: Props) {
       {/* content */}
       <div className="rp-content">
         {props.activeTab === 'usage' ? (
-          <UsagePage usage={props.usage} />
+          <UsagePage usage={props.usage} lifetime={props.lifetime} />
         ) : props.activeTab.startsWith('file:') ? (
           (() => {
             const tab = props.extraTabs.find((t) => t.id === props.activeTab);
@@ -254,7 +235,13 @@ export function AgentPanel(props: Props) {
 
 /* ── usage page ── */
 
-function UsagePage({ usage }: { usage: UsageStats }) {
+function UsagePage({
+  usage,
+  lifetime,
+}: {
+  usage: UsageStats;
+  lifetime?: import('../ipc.d').LifetimeStats | null;
+}) {
   const inTok = usage.calls.reduce((s, c) => s + c.inTok, 0);
   const outTok = usage.calls.reduce((s, c) => s + c.outTok, 0);
   const cached = usage.calls.reduce((s, c) => s + c.cached, 0);
@@ -299,6 +286,30 @@ function UsagePage({ usage }: { usage: UsageStats }) {
         <StatCard label="Üzenetek" value={String(usage.messagesCount)} />
         <StatCard label="Hívások" value={String(usage.calls.length)} />
       </div>
+
+      {lifetime && Object.keys(lifetime.models).length > 0 && (
+        <>
+          <SectionTitle>Összesen (minden session)</SectionTitle>
+          <div className="u-grid">
+            {(() => {
+              let ti = 0, to = 0, ca = 0, cl = 0, cost = 0, known = true;
+              for (const [m, u] of Object.entries(lifetime.models)) {
+                ti += u.inTok; to += u.outTok; ca += u.cachedTok; cl += u.calls;
+                const c = estimateCost(m, u.inTok, u.outTok);
+                if (c === null) known = false; else cost += c;
+              }
+              return (
+                <>
+                  <StatCard label="Token össz." value={(ti + to).toLocaleString('hu-HU')} />
+                  <StatCard label="Cache" value={ca ? ca.toLocaleString('hu-HU') : '—'} />
+                  <StatCard label="Költség" value={known ? `$${cost.toFixed(2)}` : '$?'} />
+                  <StatCard label="Hívások" value={String(cl)} />
+                </>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       <SectionTitle>Hívások token-felhasználása</SectionTitle>
       {usage.calls.length === 0 ? (

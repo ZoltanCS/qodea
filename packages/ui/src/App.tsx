@@ -7,6 +7,8 @@ import { Settings } from './settings/Settings';
 import { AgentPanel } from './panels/AgentPanel';
 import { AvatarEditor } from './avatar/AvatarEditor';
 import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
+import type { LifetimeStats } from './ipc.d';
+import { estimateCost } from './ui/pricing';
 
 type Theme = 'dark' | 'light';
 
@@ -26,12 +28,22 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [avatarCfg, setAvatarCfg] = useState<AvatarCfg>(loadAvatar);
+  const [lifetime, setLifetime] = useState<LifetimeStats | null>(null);
+  const [projectCount, setProjectCount] = useState(0);
   const streamRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.dataset['theme'] = theme;
     localStorage.setItem('qodea-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    void window.qodea.statsGet().then(setLifetime).catch(() => {});
+    void window.qodea
+      .projectsList()
+      .then((p) => setProjectCount(p.length))
+      .catch(() => {});
+  }, []);
 
   const submit = useCallback(() => {
     if (!draft.trim()) return;
@@ -292,6 +304,7 @@ export function App() {
           onActivate={chat.setActiveAgentTab}
           onCloseTab={chat.closePanelTab}
           extraTabs={chat.extraTabs}
+          lifetime={lifetime}
           usage={{
             calls: chat.usageCalls,
             tokensUsed: chat.tokensUsed,
@@ -330,6 +343,7 @@ export function App() {
                 ×
               </button>
             </header>
+            <ProfileStats lifetime={lifetime} projects={projectCount} />
             <AvatarEditor
               initial={avatarCfg}
               onSave={(cfg) => {
@@ -341,6 +355,64 @@ export function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── profile lifetime stats ─────────────────────────────────────────────── */
+
+function ProfileStats({
+  lifetime,
+  projects,
+}: {
+  lifetime: LifetimeStats | null;
+  projects: number;
+}) {
+  if (!lifetime || Object.keys(lifetime.models).length === 0) return null;
+
+  let inTok = 0, outTok = 0, cached = 0, calls = 0, cost = 0, costKnown = true;
+  for (const [model, m] of Object.entries(lifetime.models)) {
+    inTok += m.inTok;
+    outTok += m.outTok;
+    cached += m.cachedTok;
+    calls += m.calls;
+    const c = estimateCost(model, m.inTok, m.outTok);
+    if (c === null) costKnown = false;
+    else cost += c;
+  }
+  const hitRate = inTok > 0 ? Math.round((cached / inTok) * 100) : 0;
+
+  return (
+    <div className="prof-stats">
+      <SectionTitleMini>Összes használat</SectionTitleMini>
+      <div className="ps-grid">
+        <PsCard label="Token be" value={inTok.toLocaleString('hu-HU')} />
+        <PsCard label="Token ki" value={outTok.toLocaleString('hu-HU')} />
+        <PsCard label="Cache" value={`${cached.toLocaleString('hu-HU')} (${hitRate}%)`} />
+        <PsCard
+          label="Becsült költség"
+          value={costKnown ? `$${cost.toFixed(2)}` : '$? (ismeretlen modell)'}
+        />
+        <PsCard label="Hívások" value={String(calls)} />
+        <PsCard label="Projektek" value={String(projects)} />
+      </div>
+    </div>
+  );
+}
+
+function SectionTitleMini({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--faint)', margin: '4px 0 8px' }}>
+      {children}
+    </div>
+  );
+}
+
+function PsCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ps-card">
+      <span className="ps-label">{label}</span>
+      <span className="ps-value">{value}</span>
     </div>
   );
 }

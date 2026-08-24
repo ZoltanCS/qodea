@@ -1,0 +1,146 @@
+/* ── Providers tab ───────────────────────────────────────────────────────── */
+
+interface PresetDef {
+  id: string;
+  label: string;
+  kind: 'openai-compatible' | 'anthropic';
+  baseUrl: string;
+  model: string;
+}
+
+const PRESETS: PresetDef[] = [
+  { id: 'openai', label: 'OpenAI', kind: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  { id: 'anthropic', label: 'Anthropic', kind: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-5' },
+  { id: 'openrouter', label: 'OpenRouter', kind: 'openai-compatible', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o-mini' },
+  { id: 'groq', label: 'Groq', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+  { id: 'deepseek', label: 'DeepSeek', kind: 'openai-compatible', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { id: 'cerebras', label: 'Cerebras', kind: 'openai-compatible', baseUrl: 'https://api.cerebras.ai/v1', model: 'llama3.3-70b' },
+  { id: 'zen', label: 'OpenCode Zen', kind: 'openai-compatible', baseUrl: 'https://opencode.ai/zen/go/v1', model: 'grok-code-fast-1' },
+  { id: 'together', label: 'Together', kind: 'openai-compatible', baseUrl: 'https://api.together.xyz/v1', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+  { id: 'mistral', label: 'Mistral', kind: 'openai-compatible', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
+  { id: 'xai', label: 'xAI (Grok)', kind: 'openai-compatible', baseUrl: 'https://api.x.ai/v1', model: 'grok-3-mini' },
+  { id: 'ollama', label: 'Ollama (helyi)', kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+  { id: 'azure', label: 'Azure OpenAI (v1)', kind: 'openai-compatible', baseUrl: '', model: '' },
+  { id: 'custom', label: 'Egyéni endpoint', kind: 'openai-compatible', baseUrl: '', model: '' },
+];
+
+function ProvidersEditor(props: {
+  drafts: Draft[];
+  activeIdx: number;
+  setActive: (i: number) => void;
+  patchActive: (p: Partial<Draft>) => void;
+  addProvider: (preset?: PresetDef) => void;
+  removeActive: () => void;
+  markDefault: (v: boolean) => void;
+  loadModels: () => void;
+  loadingModels: boolean;
+  models: string[] | null;
+  savedMsg: string | null;
+  onSave: () => void;
+}) {
+  const active = props.drafts[props.activeIdx];
+  if (!active) return <div className="dim pad">Nincs szolgáltató.</div>;
+
+  return (
+    <div className="prov-split">
+      <aside className="set-list">
+        {props.drafts.map((d, i) => (
+          <button
+            key={`${d.id}-${i}`}
+            className={`set-item${i === props.activeIdx ? ' on' : ''}`}
+            onClick={() => props.setActive(i)}
+          >
+            <span className="nm">{d.label || d.id || '(új)'}</span>
+            {d.isDefault && <span className="def">★</span>}
+          </button>
+        ))}
+        <button className="set-add" onClick={() => props.addProvider()}>
+          + Új szolgáltató
+        </button>
+      </aside>
+
+      <section className="set-form">
+        <Field label="Név" hint="Csak megkülönböztetéshez — semmi mást nem befolyásol.">
+          <input
+            value={active.label}
+            onChange={(e) => props.patchActive({ label: e.target.value })}
+            placeholder="pl. OpenAI"
+          />
+        </Field>
+
+        <Field label="Endpoint" hint="A preset előre beállította — csak ha eltérő, módosítsd.">
+          <input
+            value={active.baseUrl}
+            onChange={(e) => props.patchActive({ baseUrl: e.target.value })}
+            placeholder="https://…/v1"
+            spellCheck={false}
+          />
+        </Field>
+
+        <Field
+          label="API kulcs"
+          hint={active.hasStoredKey ? 'Van mentett kulcs — ha üresen hagyod, megmarad.' : undefined}
+        >
+          <input
+            type="password"
+            value={active.newApiKey}
+            onChange={(e) => props.patchActive({ newApiKey: e.target.value })}
+            placeholder={active.hasStoredKey ? '•••••••• (mentett)' : 'kulcs…'}
+          />
+        </Field>
+
+        <Field label="Modell" hint="A preset alapértelmezi — felülírható, vagy a modellek lekérése után választhatsz.">
+          <input
+            value={active.defaultModel}
+            onChange={(e) => props.patchActive({ defaultModel: e.target.value })}
+            spellCheck={false}
+          />
+        </Field>
+
+        <button className="btn models-btn" onClick={props.loadModels} disabled={props.loadingModels}>
+          {props.loadingModels ? 'Betöltés…' : 'Elérhető modellek lekérése'}
+        </button>
+
+        {props.models !== null &&
+          (props.models.length === 0 ? (
+            <div className="model-list dim">Nincs találat</div>
+          ) : (
+            <div className="model-list">
+              {props.models.map((m) => (
+                <button
+                  key={m}
+                  className={`model${m === active.defaultModel ? ' sel' : ''}`}
+                  onClick={() => props.patchActive({ defaultModel: m })}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          ))}
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={active.isDefault}
+            onChange={(e) => props.markDefault(e.target.checked)}
+          />{' '}
+          legyen ez az alapértelmezett
+        </label>
+
+        {!active.isNew && (
+          <button className="btn del" onClick={props.removeActive}>
+            Szolgáltató törlése
+          </button>
+        )}
+
+        <div className="pane-actions">
+          {props.savedMsg && <span className="saved">{props.savedMsg}</span>}
+          <span className="spacer" />
+          <button className="btn primary" onClick={props.onSave}>
+            Mentés
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

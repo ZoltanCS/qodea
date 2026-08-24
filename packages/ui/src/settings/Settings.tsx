@@ -168,11 +168,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
   }, [drafts.length]);
 
   const removeActive = useCallback(() => {
-    if (!active?.isNew && !confirm(`Törlöd a szolgáltatót: ${active?.id}?`)) return;
+    // immediate delete — sandboxed renderers block confirm() dialogs
     setDrafts((prev) => prev.filter((_, i) => i !== activeIdx));
     setActiveIdx(0);
     setModels(null);
-  }, [active]);
+  }, [activeIdx]);
 
   const markDefault = useCallback(
     (checked: boolean) => {
@@ -346,12 +346,36 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
 /* ── Providers tab ───────────────────────────────────────────────────────── */
 
+interface PresetDef {
+  id: string;
+  label: string;
+  kind: 'openai-compatible' | 'anthropic';
+  baseUrl: string;
+  model: string;
+}
+
+const PRESETS: PresetDef[] = [
+  { id: 'openai', label: 'OpenAI', kind: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  { id: 'anthropic', label: 'Anthropic', kind: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-5' },
+  { id: 'openrouter', label: 'OpenRouter', kind: 'openai-compatible', baseUrl: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4o-mini' },
+  { id: 'groq', label: 'Groq', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+  { id: 'deepseek', label: 'DeepSeek', kind: 'openai-compatible', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { id: 'cerebras', label: 'Cerebras', kind: 'openai-compatible', baseUrl: 'https://api.cerebras.ai/v1', model: 'llama3.3-70b' },
+  { id: 'zen', label: 'OpenCode Zen', kind: 'openai-compatible', baseUrl: 'https://opencode.ai/zen/go/v1', model: 'grok-code-fast-1' },
+  { id: 'together', label: 'Together', kind: 'openai-compatible', baseUrl: 'https://api.together.xyz/v1', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+  { id: 'mistral', label: 'Mistral', kind: 'openai-compatible', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
+  { id: 'xai', label: 'xAI (Grok)', kind: 'openai-compatible', baseUrl: 'https://api.x.ai/v1', model: 'grok-3-mini' },
+  { id: 'ollama', label: 'Ollama (helyi)', kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+  { id: 'azure', label: 'Azure OpenAI (v1)', kind: 'openai-compatible', baseUrl: '', model: '' },
+  { id: 'custom', label: 'Egyéni endpoint', kind: 'openai-compatible', baseUrl: '', model: '' },
+];
+
 function ProvidersEditor(props: {
   drafts: Draft[];
   activeIdx: number;
   setActive: (i: number) => void;
   patchActive: (p: Partial<Draft>) => void;
-  addProvider: () => void;
+  addProvider: (preset?: PresetDef) => void;
   removeActive: () => void;
   markDefault: (v: boolean) => void;
   loadModels: () => void;
@@ -376,72 +400,51 @@ function ProvidersEditor(props: {
             {d.isDefault && <span className="def">★</span>}
           </button>
         ))}
-        <button className="set-add" onClick={props.addProvider}>
+        <button className="set-add" onClick={() => props.addProvider()}>
           + Új szolgáltató
         </button>
       </aside>
 
       <section className="set-form">
-        <Field label="Azonosító">
-          <input
-            value={active.id}
-            disabled={!active.isNew}
-            onChange={(e) => props.patchActive({ id: e.target.value })}
-            placeholder="pl. azure"
-          />
-        </Field>
+        {active.isNew && (
+          <Field label="Preset" hint="Válasz szolgáltatót — endpoint és modell előre beállítva.">
+            <div className="preset-grid">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  className={`preset-chip${active.label === p.label ? ' on' : ''}`}
+                  onClick={() =>
+                    props.patchActive({
+                      id: p.id,
+                      label: p.label,
+                      baseUrl: p.baseUrl,
+                      defaultModel: p.model,
+                    })
+                  }
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
 
-        <Field label="Típus">
-          <select value={active.kind} onChange={(e) => props.patchActive({ kind: e.target.value })}>
-            {KINDS.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Megnevezés">
+        <Field label="Név" hint="Csak megkülönböztetéshez — semmi mást nem befolyásol.">
           <input
             value={active.label}
             onChange={(e) => props.patchActive({ label: e.target.value })}
-            placeholder="pl. Azure OpenAI"
+            placeholder="pl. OpenAI"
           />
         </Field>
 
-        <Field label="Endpoint (base URL)" hint="pl. https://...azure.com/openai/v1">
+        <Field label="Endpoint" hint="A preset előre beállította — csak ha eltérő, módosítsd.">
           <input
             value={active.baseUrl}
             onChange={(e) => props.patchActive({ baseUrl: e.target.value })}
-            placeholder="https://example.com/v1"
+            placeholder="https://…/v1"
             spellCheck={false}
           />
         </Field>
-
-        {active.kind === 'azure' && (
-          <>
-            <Field label="Azure endpoint (resource)">
-              <input
-                value={active.azureEndpoint}
-                onChange={(e) => props.patchActive({ azureEndpoint: e.target.value })}
-                placeholder="https://TE-RESOURCE.openai.azure.com"
-                spellCheck={false}
-              />
-            </Field>
-            <Field label="API version">
-              <input
-                value={active.azureApiVersion}
-                onChange={(e) => props.patchActive({ azureApiVersion: e.target.value })}
-              />
-            </Field>
-            <Field label="Deployment (opcionális)">
-              <input
-                value={active.azureDeployment}
-                onChange={(e) => props.patchActive({ azureDeployment: e.target.value })}
-              />
-            </Field>
-          </>
-        )}
 
         <Field
           label="API kulcs"
@@ -454,41 +457,12 @@ function ProvidersEditor(props: {
             placeholder={active.hasStoredKey ? '•••••••• (mentett)' : 'kulcs…'}
           />
         </Field>
-        {active.hasStoredKey && (
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={active.clearStoredKey}
-              onChange={(e) => props.patchActive({ clearStoredKey: e.target.checked })}
-            />{' '}
-            mentett kulcs törlése
-          </label>
-        )}
 
-        <Field label="API key env var" hint="Alternatíva: környezeti változó neve a kulcshoz">
-          <input
-            value={active.apiKeyEnv}
-            onChange={(e) => props.patchActive({ apiKeyEnv: e.target.value })}
-            placeholder="pl. MY_API_KEY"
-            spellCheck={false}
-          />
-        </Field>
-
-        <Field label="Alapértelmezett modell">
+        <Field label="Modell" hint="A preset alapértelmezi — felülírható, vagy a modellek lekérése után választhatsz.">
           <input
             value={active.defaultModel}
             onChange={(e) => props.patchActive({ defaultModel: e.target.value })}
-            placeholder="pl. DeepSeek-V4-Pro"
             spellCheck={false}
-          />
-        </Field>
-
-        <Field label="Context window (token)" hint="A kontextus-gyűrű ehhez mér">
-          <input
-            type="number"
-            value={active.contextWindow}
-            onChange={(e) => props.patchActive({ contextWindow: e.target.value })}
-            placeholder="131072"
           />
         </Field>
 

@@ -46,6 +46,7 @@ import {
   listSessions,
   touchSession,
 } from './store.js';
+import { addUsage } from './stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.argv.includes('--dev');
@@ -272,6 +273,14 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
           await appendMessages(sessionId, value.messages);
           break;
         }
+        if (value.type === 'usage') {
+          addUsage(
+            runModel,
+            value.inputTokens ?? 0,
+            value.outputTokens ?? 0,
+            value.cachedTokens ?? 0,
+          );
+        }
         send(value);
       }
     } catch (err) {
@@ -291,6 +300,11 @@ function registerIpc(win: () => BrowserWindow): void {
   ipcMain.handle('qodea:providers', () => listProviders());
 
   // ── settings: read editable drafts (secrets masked) ──────────────────────
+  ipcMain.handle('qodea:stats:get', async () => {
+    const { loadStats } = await import('./stats.js');
+    return loadStats();
+  });
+
   ipcMain.handle('qodea:getConfig', async () => {
     const config = await loadConfig();
     const entries = getEffectiveProviders(config);

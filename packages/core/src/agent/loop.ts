@@ -204,8 +204,8 @@ async function* runAgentInner(
         } else if (ev.type === 'tool-call') {
           calls.push({ id: ev.id, name: ev.name, argumentsJson: ev.argumentsJson });
         } else if (ev.type === 'usage') {
-          lastUsage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
-          yield { type: 'usage', inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
+          lastUsage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, cachedTokens: ev.cachedTokens };
+          yield { type: 'usage', inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, cachedTokens: ev.cachedTokens };
         } else if (ev.type === 'done') {
           stop = ev.stopReason;
         }

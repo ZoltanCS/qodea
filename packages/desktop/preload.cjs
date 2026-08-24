@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('qodea', {
     ipcRenderer.invoke('qodea:respond', { sessionId, requestId, approved }),
 
   stopSession: (sessionId) => ipcRenderer.invoke('qodea:stop', sessionId),
+  statsGet: () => ipcRenderer.invoke('qodea:stats:get'),
   sendMessage: (sessionId, text) => ipcRenderer.invoke('qodea:sendMessage', { sessionId, text }),
 
   /** Subscribe to agent events; returns an unsubscribe function. */

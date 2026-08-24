@@ -115,7 +115,8 @@ export class AnthropicProvider implements Provider {
       { signal: req.signal },
     );
 
-    let inputTokens: number | undefined;
+    let cachedTokens: number | undefined;
+  let inputTokens: number | undefined;
     let outputTokens: number | undefined;
     let stopReason: StopReason = 'other';
     const pendingTools = new Map<number, { id: string; name: string; json: string }>();
@@ -124,6 +125,8 @@ export class AnthropicProvider implements Provider {
       switch (event.type) {
         case 'message_start': {
           inputTokens = event.message.usage?.input_tokens;
+          cachedTokens = (event.message.usage as { cache_read_input_tokens?: number } | undefined)
+            ?.cache_read_input_tokens;
           break;
         }
         case 'content_block_start': {
@@ -167,7 +170,7 @@ export class AnthropicProvider implements Provider {
       }
     }
 
-    yield { type: 'usage', inputTokens, outputTokens };
+    yield { type: 'usage', inputTokens, outputTokens, cachedTokens };
     yield { type: 'done', stopReason };
   }
 }

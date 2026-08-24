@@ -86,14 +86,16 @@ export class OpenAICompatProvider implements Provider {
     );
 
     const pendingTools = new Map<number, { id: string; name: string; args: string }>();
-    let usage: { inputTokens?: number; outputTokens?: number } | undefined;
+    let usage: { inputTokens?: number; outputTokens?: number; cachedTokens?: number } | undefined;
     let finished = false;
 
     for await (const chunk of stream) {
       if (chunk.usage) {
+        const details = (chunk.usage as { prompt_tokens_details?: { cached_tokens?: number } }).prompt_tokens_details;
         usage = {
           inputTokens: chunk.usage.prompt_tokens,
           outputTokens: chunk.usage.completion_tokens,
+          cachedTokens: details?.cached_tokens,
         };
       }
 
