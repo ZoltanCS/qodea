@@ -29,3 +29,4 @@ packages/desktop/index.html
 packages/desktop/script.js
 packages/desktop/styles.css
 packages/ui/src/settings/providers-pane.txt
+scripts/_*.mjs
