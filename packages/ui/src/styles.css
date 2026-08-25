@@ -28,6 +28,20 @@
   --code-bg: #efece5;
 }
 
+:root[data-theme='nord'] {
+  color-scheme: dark;
+  --bg: #2e3440;
+  --panel: #3b4252;
+  --line: #434c5e;
+  --line-soft: #4c566a;
+  --text: #eceff4;
+  --dim: #a7b1c2;
+  --faint: #6d7887;
+  --u-bubble: #434c5e;
+  --hover: #434c5e;
+  --code-bg: #353c4a;
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; margin: 0; }

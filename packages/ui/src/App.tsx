@@ -10,10 +10,13 @@ import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
 import type { LifetimeStats } from './ipc.d';
 import { estimateCost } from './ui/pricing';
 
-type Theme = 'dark' | 'light';
+type Theme = 'dark' | 'nord' | 'light';
+
+const THEME_ORDER: Theme[] = ['dark', 'nord', 'light'];
 
 function initialTheme(): Theme {
-  return localStorage.getItem('qodea-theme') === 'light' ? 'light' : 'dark';
+  const saved = localStorage.getItem('qodea-theme');
+  return THEME_ORDER.includes(saved as Theme) ? (saved as Theme) : 'dark';
 }
 
 function projectNameOf(cwd: string): string {
@@ -186,7 +189,10 @@ export function App() {
           chat.setCwd(cwd);
         }}
         theme={theme}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onToggleTheme={() => {
+          const idx = THEME_ORDER.indexOf(theme);
+          setTheme(THEME_ORDER[(idx + 1) % THEME_ORDER.length]!);
+        }}
         settingsOpen={showSettings}
         onToggleSettings={() => setShowSettings((v) => !v)}
         onCloseSettings={() => {
