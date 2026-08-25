@@ -1582,3 +1582,132 @@ body {
 .bs-done { font-size: 17px; font-weight: 700; color: #6fbf8f; }
 
 .handed .dim, .bs.handed { color: var(--dim); }
+
+/* ══ OLED + Neon theme ══ */
+:root[data-theme='oled'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --panel: #0a0a0d;
+  --line: #16161c;
+  --line-soft: #1e1e26;
+  --text: #e8e6f0;
+  --dim: #8b88a8;
+  --faint: #55526a;
+  --u-bubble: #101018;
+  --hover: #0e0e14;
+  --code-bg: #0c0c11;
+}
+
+@property --ng-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes ng-spin {
+  to { --ng-angle: 360deg; }
+}
+
+/* frosted composer (OLED) */
+[data-theme='oled'] .composer {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(120,140,190,0.10), rgba(45,55,95,0.07) 55%, rgba(18,24,48,0.10));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(120,140,200,0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -10px 24px rgba(0,0,10,0.35);
+  overflow: visible;
+}
+[data-theme='oled'] .composer:focus-within {
+  border-color: rgba(0,229,255,0.22);
+}
+
+/* LED csík + külső fény rétegek */
+[data-theme='oled'] .composer::before,
+[data-theme='oled'] .composer::after {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s;
+}
+
+/* LED csík: forgó conic fény, maszkolt keretre */
+[data-theme='oled'] .composer::before {
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--ng-angle),
+    transparent 0deg,
+    #00e5ff 45deg,
+    #7c4dff 90deg,
+    #e100ff 135deg,
+    transparent 210deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* külső fény: elmosódott neon a keret mögött */
+[data-theme='oled'] .composer::after {
+  filter: blur(16px);
+  background: conic-gradient(
+    from var(--ng-angle),
+    transparent 20deg,
+    rgba(0,229,255,0.35) 55deg,
+    rgba(124,77,255,0.4) 95deg,
+    rgba(225,0,255,0.32) 135deg,
+    transparent 210deg
+  );
+}
+
+/* állapotok */
+[data-theme='oled'] .composer.fx-burst::before,
+[data-theme='oled'] .composer.fx-running::before,
+[data-theme='oled'] .composer.fx-burst::after,
+[data-theme='oled'] .composer.fx-running::after { opacity: 1; }
+
+[data-theme='oled'] .composer.fx-burst::before { animation: ng-spin 1.2s linear infinite; }
+[data-theme='oled'] .composer.fx-burst::after { animation: ng-spin 1.2s linear infinite; }
+[data-theme='oled'] .composer.fx-running::before { animation: ng-spin 3.5s linear infinite; opacity: 0.55; }
+[data-theme='oled'] .composer.fx-running::after { animation: ng-spin 3.5s linear infinite; opacity: 0.4; }
+
+/* send gomb megvilágítás (NEM pulzál — a fény éri) */
+[data-theme='oled'] .composer.fx-burst .send,
+[data-theme='oled'] .composer.fx-running .send {
+  box-shadow:
+    0 0 16px rgba(0,229,255,0.28),
+    0 0 5px rgba(124,77,255,0.35);
+  border: 1px solid rgba(0,229,255,0.28);
+}
+
+/* elnyökles küldéskor */
+[data-theme='oled'] .composer.fx-tilt { animation: ng-tilt 0.3s ease-out; }
+
+@keyframes ng-tilt {
+  0% { transform: skewX(0deg) scale(1); }
+  35% { transform: skewX(-0.55deg) scale(1.005); }
+  70% { transform: skewX(0.4deg) scale(1.002); }
+  100% { transform: skewX(0deg) scale(1); }
+}
+
+/* neon tab aláhúzás (OLED) */
+[data-theme='oled'] .rp-tab.on {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--u-bubble), var(--u-bubble)) padding-box,
+    linear-gradient(90deg, rgba(0,229,255,0.45), rgba(225,0,255,0.45)) border-box;
+  box-shadow: 0 2px 0 -1px rgba(0,229,255,0.35);
+}
+
+/* futó tool-kártya neon szegély (OLED) */
+[data-theme='oled'] .tool-card.run {
+  border-color: rgba(0,229,255,0.3);
+  box-shadow: 0 0 12px rgba(0,229,255,0.08);
+}

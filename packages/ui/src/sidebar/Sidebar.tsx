@@ -15,7 +15,7 @@ interface SidebarProps {
   onAddProject: () => void;
   onBrainstorm?: () => void;
   onNewChatInProject: (cwd: string) => void;
-  theme: 'dark' | 'nord' | 'light';
+  theme: 'dark' | 'oled' | 'nord' | 'light';
   onToggleTheme: () => void;
   settingsOpen: boolean;
   onToggleSettings: () => void;

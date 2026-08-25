@@ -10,9 +10,9 @@ import { loadAvatar, saveAvatar, type AvatarCfg } from './avatar/avatarConfig';
 import type { LifetimeStats } from './ipc.d';
 import { estimateCost } from './ui/pricing';
 
-type Theme = 'dark' | 'nord' | 'light';
+type Theme = 'dark' | 'oled' | 'nord' | 'light';
 
-const THEME_ORDER: Theme[] = ['dark', 'nord', 'light'];
+const THEME_ORDER: Theme[] = ['dark', 'oled', 'nord', 'light'];
 
 function initialTheme(): Theme {
   const saved = localStorage.getItem('qodea-theme');
@@ -31,6 +31,8 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [avatarCfg, setAvatarCfg] = useState<AvatarCfg>(loadAvatar);
+  const [composerFx, setComposerFx] = useState<'none' | 'burst' | 'running'>('none');
+  const [tilting, setTilting] = useState(false);
   const [lifetime, setLifetime] = useState<LifetimeStats | null>(null);
   const [projectCount, setProjectCount] = useState(0);
   const streamRef = useRef<HTMLDivElement>(null);
@@ -52,8 +54,17 @@ export function App() {
     if (!draft.trim()) return;
     const task = draft;
     setDraft('');
+    if (theme === 'oled') {
+      // LED burst + elnyökles a küldés pillanatában
+      setComposerFx('burst');
+      setTilting(true);
+      setTimeout(() => setTilting(false), 320);
+      setTimeout(() => {
+        setComposerFx(chat.status === 'running' ? 'running' : 'none');
+      }, 1300);
+    }
     void chat.send(task);
-  }, [draft, chat]);
+  }, [draft, chat, theme]);
 
   // smart autoscroll: follow the stream only while the user is near the bottom
   useEffect(() => {
@@ -62,6 +73,11 @@ export function App() {
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
     if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [chat.items]);
+
+  useEffect(() => {
+    if (theme !== 'oled') return;
+    setComposerFx(chat.status === 'running' ? 'running' : 'none');
+  }, [chat.status, theme]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -106,7 +122,11 @@ export function App() {
   };
 
   const composerBox = (
-    <div className={`composer${showHome ? ' big' : ''}`}>
+    <div
+      className={`composer${showHome ? ' big' : ''}${
+        theme === 'oled' && composerFx !== 'none' ? ` fx-${composerFx}` : ''
+      }${theme === 'oled' && tilting ? ' fx-tilt' : ''}`}
+    >
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
