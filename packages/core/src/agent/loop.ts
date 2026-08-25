@@ -172,9 +172,11 @@ async function* runAgentInner(
         (opts.systemPrompt ?? buildSystemPrompt()) + (opts.systemSuffix ?? ''),
     },
     ...(opts.initialMessages ?? []),
-    // continuation attempts already carry the task in initialMessages —
-    // re-appending would duplicate the goal as a fresh user message every restart
-    ...(opts.skipTaskAppend && (opts.initialMessages?.length ?? 0) > 0
+    // continuation attempts carry the task inside initialMessages — re-appending
+    // would duplicate the goal as a fresh user message on every restart.
+    // Safety: if the carried transcript has NO user message, still append.
+    ...(opts.skipTaskAppend &&
+    (opts.initialMessages ?? []).some((m) => m.role === 'user')
       ? []
       : [userMessage(`[cwd: ${opts.cwd}]\n\n${opts.task}`)]),
   ];

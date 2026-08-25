@@ -97,6 +97,15 @@ export function BrainstormApp() {
         .join('');
 
       try {
+        // build the conversation history from prior items (previews stripped)
+        const history = itemsRef.current
+          .filter((it) => it.kind === 'user' || it.kind === 'assistant')
+          .map((it) => ({
+            role: it.kind === 'user' ? ('user' as const) : ('assistant' as const),
+            content: (it.text ?? '').replace(/```preview[\s\S]*?```/g, '[előző preview]').trim(),
+          }))
+          .filter((m) => m.content.length > 0);
+
         const res = await window.qodea.startSession({
           ...(sessionId ? { sessionId } : {}),
           task: (trimmed || 'Folytasd') + fileTexts,
@@ -104,10 +113,8 @@ export function BrainstormApp() {
           cwd: '',
           brainstorm: true,
           ...(images.length > 0 ? { images } : {}),
-          ...(sessionId && itemsRef.current.length > 2
-            ? {}
-            : {}),
-        } as Parameters<typeof window.qodea.startSession>[0]);
+          ...(history.length > 0 ? { history } : {}),
+        });
         setSessionId(res.sessionId);
         setAttachments([]);
       } catch (err) {

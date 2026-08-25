@@ -26,6 +26,7 @@ export interface StartRequest {
   cwd: string;
   reasoningEffort?: 'low' | 'medium' | 'high';
   uiMode?: 'agent' | 'experts';
+  brainstorm?: boolean;
   history?: unknown[];
 }
 

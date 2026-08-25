@@ -275,8 +275,8 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
           }),
         ];
         brainstormPrompt =
-          'You are the Brainstorm partner: a creative director helping the user shape a project ' +
-          'BEFORE any code is written. Multi-turn design conversation. Rules:\n' +
+          'You are the Brainstorm partner: a creative director in an ONGOING multi-turn design ' +
+          'conversation — remember everything discussed earlier and build on it. Rules:\n' +
           '- Ask sharp questions, propose ideas, inspire. Match the user\'s language (Hungarian).\n' +
           '- For ANY UI element under discussion (button, card, hero, layout), output a minimal live ' +
           'preview inside a ```preview fenced block containing ONE small standalone HTML document ' +
