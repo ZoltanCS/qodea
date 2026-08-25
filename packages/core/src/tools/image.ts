@@ -27,7 +27,7 @@ export function createGenerateImageTool(cfg: ImageGenConfig): Tool {
     },
     describe(args) {
       const p = String(args['prompt'] ?? '?');
-      return `képet generál: ${p.length > 60 ? `${p.slice(0, 60)}…` : p}`;
+      return `generate image: ${p.length > 60 ? `${p.slice(0, 60)}…` : p}`;
     },
 
     async run(rawArgs) {
@@ -65,7 +65,7 @@ export function createGenerateImageTool(cfg: ImageGenConfig): Tool {
         }
       }
       throw new Error(
-        `Képgenerálás sikertelen (próbált modellek: ${models.join(', ')}): ${
+        `Image generation failed (tried: ${models.join(', ')}): ${
           lastError instanceof Error ? lastError.message : String(lastError)
         }`,
       );

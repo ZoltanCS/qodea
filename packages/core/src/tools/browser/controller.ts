@@ -70,12 +70,12 @@ export async function getPage(opts?: { headless?: boolean }): Promise<any> {
 }
 
 export async function closeBrowser(): Promise<string> {
-  if (!browser) return 'Nincs nyitott böngésző.';
+  if (!browser) return 'No open browser.';
   await browser.close().catch(() => {});
   browser = null;
   context = null;
   page = null;
-  return 'Böngésző bezárva.';
+  return 'Browser closed.';
 }
 
 /** Numbered interactive-element listing for the LLM. */

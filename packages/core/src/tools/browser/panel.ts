@@ -20,7 +20,7 @@ const browser_screencast: Tool = {
   kind: 'read',
   parametersJsonSchema: { type: 'object', properties: {} },
   describe() {
-    return 'élő böngésző-stream indítása';
+    return 'start live browser stream';
   },
   async run() {
     const page = await getPage();
@@ -40,7 +40,7 @@ const browser_type_text: Tool = {
   },
   describe(args) {
     const t = String(args['text'] ?? '');
-    return `beír: ${t.length > 40 ? `${t.slice(0, 40)}…` : t}`;
+    return `type: ${t.length > 40 ? `${t.slice(0, 40)}…` : t}`;
   },
   async run(rawArgs) {
     if (typeof rawArgs['text'] !== 'string') {
@@ -62,7 +62,7 @@ const browser_press_key: Tool = {
     required: ['key'],
   },
   describe(args) {
-    return `nyom: ${String(args['key'] ?? '?')}`;
+    return `press: ${String(args['key'] ?? '?')}`;
   },
   async run(rawArgs) {
     const key = rawArgs['key'];

@@ -15,9 +15,9 @@ export class ErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <div style={{ padding: 24, color: '#ff9d8f' }}>
-          <h2>Hoppá — hiba történt</h2>
+          <h2>Something broke</h2>
           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{String(this.state.error)}</pre>
-          <button onClick={() => this.setState({ error: null })}>Újrapróbálás</button>
+          <button onClick={() => this.setState({ error: null })}>Retry</button>
         </div>
       );
     }

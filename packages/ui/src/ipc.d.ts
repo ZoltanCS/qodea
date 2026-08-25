@@ -15,6 +15,7 @@ export interface ProjectInfo {
   name: string;
   cwd: string;
   createdAt: number;
+  hidden?: boolean;
 }
 
 export interface StartRequest {
@@ -108,6 +109,7 @@ declare global {
       sessionDelete(id: string): Promise<void>;
       projectsList(): Promise<ProjectInfo[]>;
       projectAdd(): Promise<ProjectInfo | null>;
+      projectHide(id: string, hidden: boolean): Promise<void>;
       projectDelete(id: string): Promise<void>;
       statsGet(): Promise<LifetimeStats>;
       getConfig(): Promise<{

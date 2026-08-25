@@ -216,7 +216,7 @@ export async function* runAgentAuto(
           }
           yield {
             type: 'auto-note',
-            text: `Új üzenet érkezett (${attempt}. forduló után) — folytatás…`,
+            text: `New user message received (${attempt}.) — continuing…`,
           };
           break attempt_loop;
         }
@@ -234,7 +234,7 @@ export async function* runAgentAuto(
           );
           yield {
             type: 'auto-note',
-            text: 'üres válasz — utolsó válasz újragenerálása…',
+            text: 'empty response — regenerating last answer…',
           };
           break attempt_loop; // immediate retry, no restart-count
         }
@@ -257,7 +257,7 @@ export async function* runAgentAuto(
         // tools were used → real work may be ongoing: continue with transcript
         yield {
           type: 'auto-note',
-          text: `Forduló ${attempt} vége (${result.reason}) — cél még nem kész, folytatás…`,
+          text: `Turn ${attempt} vége (${result.reason}) — goal not complete, continuing…`,
         };
         break attempt_loop;
       } catch (err) {

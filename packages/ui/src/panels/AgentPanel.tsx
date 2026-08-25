@@ -15,10 +15,10 @@ export interface PersonaInfo {
 }
 
 const BUILTIN: PersonaInfo[] = [
-  { id: 'explorer', label: 'Kódbázis felderítő', color: '#3d8bfd', face: 'curious', desc: 'feltérképezi a kódbázist' },
-  { id: 'worker', label: 'Implementáló', color: '#3fae6a', face: 'proud', desc: 'kódot ír és módosít' },
+  { id: 'explorer', label: 'Codebase Explorer', color: '#3d8bfd', face: 'curious', desc: 'feltérképezi a kódbázist' },
+  { id: 'worker', label: 'Implementer', color: '#3fae6a', face: 'proud', desc: 'kódot ír és módosít' },
   { id: 'reviewer', label: 'Reviewer', color: '#f08b1f', face: 'suspicious', desc: 'kritizál, hibákat keres' },
-  { id: 'planner', label: 'Tervező', color: '#8a63e8', face: 'attentive', desc: 'lépésekre bontja a feladatot' },
+  { id: 'planner', label: 'Planner', color: '#8a63e8', face: 'attentive', desc: 'lépésekre bontja a feladatot' },
   { id: 'tester', label: 'Teszter', color: '#e2503c', face: 'attentive', desc: 'teszteket futtat, elemzi' },
   { id: 'netlord', label: 'Netlord', color: '#39b8a0', face: 'proud', desc: 'pökhendi webes kutató' },
 ];
@@ -176,9 +176,9 @@ export function AgentPanel(props: Props) {
           })()
         ) : props.activeTab === 'list' || props.deployed.length === 0 ? (
           <>
-            <SectionTitle>Futó / deployolt</SectionTitle>
+            <SectionTitle>Running / deployed</SectionTitle>
             {running.length === 0 && finished.length === 0 && (
-              <div className="rp-empty">Még nincs deployolt agent.</div>
+              <div className="rp-empty">No deployed agents yet.</div>
             )}
             {[...running, ...finished].map((a) => (
               <AgentRow
@@ -190,7 +190,7 @@ export function AgentPanel(props: Props) {
               />
             ))}
 
-            <SectionTitle>Elérhető típusok</SectionTitle>
+            <SectionTitle>Available types</SectionTitle>
             <div className="rp-builtins">
               {BUILTIN.map((b) => (
                 <div className="rp-builtin" key={b.id}>
@@ -205,7 +205,7 @@ export function AgentPanel(props: Props) {
           (() => {
             const agent = props.deployed.find((a) => a.id === props.activeTab);
             if (!agent)
-              return <div className="rp-empty">Ez az agent már nem elérhető.</div>;
+              return <div className="rp-empty">This agent is gone.</div>;
             const streamItems = props.streams[agent.id] ?? [];
             return (
               <div className="rp-agent-view">
@@ -220,14 +220,14 @@ export function AgentPanel(props: Props) {
                       {agent.status === 'running'
                         ? 'dolgozik…'
                         : agent.status === 'error'
-                          ? 'hiba'
-                          : 'kész'}
+                          ? 'error'
+                          : 'done'}
                     </span>
                   </div>
                 </div>
                 <div className="rp-agent-stream">
                   {streamItems.length === 0 && (
-                    <div className="rp-empty">Még nincs kimenet…</div>
+                    <div className="rp-empty">No output yet…</div>
                   )}
                   {streamItems.map((it) => (
                     <Row key={it.id} item={it} />
@@ -285,20 +285,20 @@ function UsagePage({
       </div>
 
       <div className="u-grid">
-        <StatCard label="Token be" value={inTok.toLocaleString('hu-HU')} />
-        <StatCard label="Token ki" value={outTok.toLocaleString('hu-HU')} />
-        <StatCard label="Cache" value={cached ? cached.toLocaleString('hu-HU') : '—'} />
+        <StatCard label="Tokens in" value={inTok.toLocaleString('en-US')} />
+        <StatCard label="Tokens out" value={outTok.toLocaleString('en-US')} />
+        <StatCard label="Cache" value={cached ? cached.toLocaleString('en-US') : '—'} />
         <StatCard
-          label="Költség (becslés)"
+          label="Est. cost"
           value={cost === null ? '—' : `$${cost.toFixed(4)}`}
         />
-        <StatCard label="Üzenetek" value={String(usage.messagesCount)} />
-        <StatCard label="Hívások" value={String(usage.calls.length)} />
+        <StatCard label="Messages" value={String(usage.messagesCount)} />
+        <StatCard label="Calls" value={String(usage.calls.length)} />
       </div>
 
       {lifetime && Object.keys(lifetime.models).length > 0 && (
         <>
-          <SectionTitle>Összesen (minden session)</SectionTitle>
+          <SectionTitle>Lifetime (all sessions)</SectionTitle>
           <div className="u-grid">
             {(() => {
               let ti = 0, to = 0, ca = 0, cl = 0, cost = 0, known = true;
@@ -309,10 +309,10 @@ function UsagePage({
               }
               return (
                 <>
-                  <StatCard label="Token össz." value={(ti + to).toLocaleString('hu-HU')} />
-                  <StatCard label="Cache" value={ca ? ca.toLocaleString('hu-HU') : '—'} />
+                  <StatCard label="Total tokens" value={(ti + to).toLocaleString('en-US')} />
+                  <StatCard label="Cache" value={ca ? ca.toLocaleString('en-US') : '—'} />
                   <StatCard label="Költség" value={known ? `$${cost.toFixed(2)}` : '$?'} />
-                  <StatCard label="Hívások" value={String(cl)} />
+                  <StatCard label="Calls" value={String(cl)} />
                 </>
               );
             })()}
@@ -320,9 +320,9 @@ function UsagePage({
         </>
       )}
 
-      <SectionTitle>Hívások token-felhasználása</SectionTitle>
+      <SectionTitle>Calls token-felhasználása</SectionTitle>
       {usage.calls.length === 0 ? (
-        <div className="rp-empty">Még nincs hívás ebben a sessionben.</div>
+        <div className="rp-empty">No calls in this session yet.</div>
       ) : (
         <div className="u-bars">
           {usage.calls.map((c, i) => {
@@ -339,8 +339,8 @@ function UsagePage({
         </div>
       )}
 
-      {usage.model && <div className="t-dim" style={{ marginTop: 10 }}>modell: {usage.model}</div>}
-      <div className="t-dim">context: {usage.tokensUsed.toLocaleString('hu-HU')} / {usage.contextWindow.toLocaleString('hu-HU')} token</div>
+      {usage.model && <div className="t-dim" style={{ marginTop: 10 }}>model: {usage.model}</div>}
+      <div className="t-dim">context: {usage.tokensUsed.toLocaleString('en-US')} / {usage.contextWindow.toLocaleString('en-US')} token</div>
     </div>
   );
 }
@@ -380,10 +380,10 @@ function AgentRow({
         <span className="ag-name">{agent.name}</span>
         <span className="ag-status">
           {agent.status === 'running'
-            ? 'fut…'
+            ? 'running…'
             : agent.status === 'error'
-              ? 'hiba'
-              : 'kész'}
+              ? 'error'
+              : 'done'}
         </span>
       </span>
     </button>

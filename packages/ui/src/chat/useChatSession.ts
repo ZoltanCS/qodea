@@ -160,6 +160,11 @@ export function useChatSession() {
     }
   }, [providerId]);
 
+  const hideProject = useCallback(async (id: string) => {
+    await window.qodea.projectHide(id, true);
+    await reloadSessions();
+  }, [reloadSessions]);
+
   const patchLastToolByName = useCallback((name: string, patch: Partial<ChatItem>) => {
     setItems((prev) => {
       for (let i = prev.length - 1; i >= 0; i--) {
@@ -436,7 +441,7 @@ export function useChatSession() {
       // ── agent already running → queue the message for the next turn ──
       if (status === 'running') {
         if (!sessionId) {
-          setErrorBanner('Nincs aktív session — az üzenet nem sorolódott.');
+          setErrorBanner('No active session — message not queued.');
           return;
         }
         const queuedId = nextId();
@@ -448,7 +453,7 @@ export function useChatSession() {
           const qr = await window.qodea.sendMessage(sessionId, trimmed);
           if (!qr.queued) {
             setItems((prev) => prev.filter((it) => it.id !== queuedId));
-            setErrorBanner('A futó session nem elérhető — az üzenet nem sorolódott.');
+            setErrorBanner('Running session unreachable — message not queued.');
           }
         } catch (err) {
           setItems((prev) => prev.filter((it) => it.id !== queuedId));
@@ -620,6 +625,7 @@ export function useChatSession() {
     sessions,
     projects,
     addProject,
+    hideProject,
     activeSessionId,
     uiMode,
     setUiMode,

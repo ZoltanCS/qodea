@@ -19,7 +19,8 @@ export type IconName =
   | 'search'
   | 'list'
   | 'globe'
-  | 'camera';
+  | 'camera'
+  | 'eyeOff';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   // sliders / gear-ish for general
@@ -157,6 +158,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M4 7.5 h11 a1.5 1.5 0 0 1 1.5 1.5 v8 a1.5 1.5 0 0 1 -1.5 1.5 H4 A1.5 1.5 0 0 1 2.5 17 V9 A1.5 1.5 0 0 1 4 7.5 Z M15.5 10.5 L21.5 7.5 V16.5 L15.5 13.5 Z" fill="none" strokeLinejoin="round" />
       <circle cx="9" cy="13" r="2.6" fill="none" />
+    </>
+  ),
+  eyeOff: (
+    <>
+      <path d="M3 3 L21 21" fill="none" />
+      <path d="M10.6 5.1 A9.8 9.8 0 0 1 12 5 C16 5 19.3 7.8 21 12 C20.4 13.4 19.5 14.7 18.4 15.8 M14.5 18.9 C13.7 19.2 12.9 19.4 12 19.4 C8 19.4 4.6 16.6 3 12 C3.6 10.6 4.5 9.3 5.6 8.3" fill="none" strokeLinecap="round" />
+      <path d="M9.9 9.9 A3 3 0 0 0 14.1 14.1" fill="none" strokeLinecap="round" />
     </>
   ),
 };

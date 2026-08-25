@@ -55,7 +55,7 @@ export function createSpawnAgentTool(deps: SpawnDeps): Tool {
         },
         name: {
           type: 'string',
-          description: 'Short display name you give this instance (e.g. "Kódbázis felderítő").',
+          description: 'Short display name you give this instance (e.g. "Codebase Explorer").',
         },
         task: {
           type: 'string',

@@ -36,7 +36,7 @@ export function AvatarEditor({ initial, onSave }: Props) {
         </span>
         <div className="p-actions">
           <button className="btn primary" onClick={() => onSave(cfg)} title="Alkalmaz és bezár">
-            Mentés
+            Save
           </button>
           <button className="btn" onClick={surprise} title="Véletlen kombináció">
             Lépj meg
@@ -69,7 +69,7 @@ export function AvatarEditor({ initial, onSave }: Props) {
           ))}
         </div>
 
-        <h3 className="p-h">Arc</h3>
+        <h3 className="p-h">Face</h3>
         <div className="opt-grid">
           {FACES.map((f) => (
             <PreviewOpt
@@ -83,7 +83,7 @@ export function AvatarEditor({ initial, onSave }: Props) {
           ))}
         </div>
 
-        <h3 className="p-h">Szín</h3>
+        <h3 className="p-h">Color</h3>
         <div className="swatches">
           {COLORS.map((c) => (
             <button

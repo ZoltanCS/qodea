@@ -244,7 +244,7 @@ async function* runAgentInner(
             lastCompactTurn = turn;
             yield {
               type: 'auto-note',
-              text: `kontextus tömörítve (${Math.round(
+              text: `context compacted (${Math.round(
                 (usedEstimate / ctxWindow) * 100,
               )}% → ~${Math.round((stillUsed / ctxWindow) * 100)}%)`,
             };
@@ -254,7 +254,7 @@ async function* runAgentInner(
           // compaction is best-effort — continue without it
           yield {
             type: 'auto-note',
-            text: `kompaktálás sikertelen: ${err instanceof Error ? err.message : String(err)}`,
+            text: `compaction failed: ${err instanceof Error ? err.message : String(err)}`,
           };
         }
       }

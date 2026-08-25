@@ -102,6 +102,7 @@ export interface StoredProject {
   name: string;
   cwd: string;
   createdAt: number;
+  hidden?: boolean;
 }
 
 const projectsFile = (): string => path.join(os.homedir(), '.qodea', 'projects.json');
@@ -142,4 +143,12 @@ export async function addProject(cwd: string): Promise<StoredProject> {
 
 export async function deleteProject(id: string): Promise<void> {
   await saveProjects((await listProjects()).filter((p) => p.id !== id));
+}
+
+export async function setProjectHidden(id: string, hidden: boolean): Promise<void> {
+  const all = await listProjects();
+  const p = all.find((x) => x.id === id);
+  if (!p) return;
+  p.hidden = hidden;
+  await saveProjects(all);
 }

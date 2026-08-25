@@ -1715,3 +1715,13 @@ body {
   border-color: rgba(0,229,255,0.3);
   box-shadow: 0 0 12px rgba(0,229,255,0.08);
 }
+
+/* hide-project button on project head hover */
+.hide-proj {
+  background: transparent; border: none;
+  color: var(--faint); display: flex; align-items: center;
+  padding: 3px 6px; cursor: pointer; border-radius: 6px;
+  visibility: hidden;
+}
+.proj-head:hover .hide-proj { visibility: visible; }
+.hide-proj:hover { color: var(--text); background: var(--line); }

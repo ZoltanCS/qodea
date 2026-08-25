@@ -55,7 +55,7 @@ export function BrowserTab() {
         <img className="bt-frame" src={`data:image/jpeg;base64,${frame}`} alt="browser" onClick={clickOn} />
       ) : (
         <div className="rp-empty bt-wait">
-          Nincs élő böngésző.<br />Az agent browser_navigate-e után itt jelenik meg a stream.
+          No live browser.<br />Appears here once the agent navigates.
         </div>
       )}
     </div>

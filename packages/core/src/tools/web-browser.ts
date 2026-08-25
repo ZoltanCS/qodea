@@ -58,7 +58,7 @@ const browser_snapshot: Tool = {
   kind: 'read',
   parametersJsonSchema: { type: 'object', properties: {} },
   describe() {
-    return 'elemek felsorolása az aktuális oldalról';
+    return 'list interactive elements';
   },
   async run() {
     const page = await getPage();
@@ -77,7 +77,7 @@ const browser_click: Tool = {
     required: ['ref'],
   },
   describe(args) {
-    return `kattint: [${String(args['ref'] ?? '?')}]`;
+    return `click: [${String(args['ref'] ?? '?')}]`;
   },
   async run(rawArgs) {
     const page = await getPage();
@@ -103,7 +103,7 @@ const browser_type: Tool = {
   },
   describe(args) {
     const t = String(args['text'] ?? '');
-    return `beír: [${String(args['ref'] ?? '?')}] ${t.length > 40 ? `${t.slice(0, 40)}…` : t}`;
+    return `type: [${String(args['ref'] ?? '?')}] ${t.length > 40 ? `${t.slice(0, 40)}…` : t}`;
   },
   async run(rawArgs) {
     if (typeof rawArgs['ref'] === 'undefined' || typeof rawArgs['text'] !== 'string') {

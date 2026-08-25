@@ -10,7 +10,10 @@ contextBridge.exposeInMainWorld('qodea', {
 
   projectsList: () => ipcRenderer.invoke('qodea:projects:list'),
   projectAdd: () => ipcRenderer.invoke('qodea:projects:add'),
+  projectHide: (id, hidden) => ipcRenderer.invoke('qodea:projects:hide', { id, hidden }),
+  projectHide: (id, hidden) => ipcRenderer.invoke('qodea:projects:hide', { id, hidden }),
   projectDelete: (id) => ipcRenderer.invoke('qodea:projects:delete', id),
+  projectHide: (id, hidden) => ipcRenderer.invoke('qodea:projects:hide', { id, hidden }),
 
   getConfig: () => ipcRenderer.invoke('qodea:getConfig'),
   saveConfig: (payload) => ipcRenderer.invoke('qodea:saveConfig', payload),

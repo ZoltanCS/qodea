@@ -38,7 +38,7 @@ export function Row({
         <div className="row user">
           <div className={`u-bubble${item.queued ? ' q' : ''}`}>
             {item.text}
-            {item.queued && <span className="q-tag">· sorban</span>}
+            {item.queued && <span className="q-tag">· queued</span>}
           </div>
         </div>
       );
@@ -62,14 +62,14 @@ export function Row({
       if (item.resolved) {
         return (
           <div className={`perm done${item.isError ? ' no' : ''}`}>
-            {item.isError ? 'elutasítva' : 'engedélyezve'} · <code>{item.name}</code>
+            {item.isError ? 'denied' : 'approved'} · <code>{item.name}</code>
           </div>
         );
       }
       return (
         <div className="perm">
           <div className="q">
-            <strong>{item.name}</strong> — engedély kell
+            <strong>{item.name}</strong> — needs permission
           </div>
           <code className="what">{item.summary}</code>
           <div className="acts">
@@ -77,7 +77,7 @@ export function Row({
               className="ok"
               onClick={() => item.requestId && onRespond?.(item.requestId, true)}
             >
-              Engedélyezem
+              Allow
             </button>
             <button
               className="nope"
@@ -98,14 +98,14 @@ function Thinking({ text, live }: { text: string; live: boolean }) {
   if (live) {
     return (
       <div className="think live">
-        <span className="lbl">gondolkodik</span>
+        <span className="lbl">thinking</span>
         <div className="t-body">{text}</div>
       </div>
     );
   }
   return (
     <details className="think">
-      <summary>gondolatmenet</summary>
+      <summary>chain of thought</summary>
       <div className="t-body">{text}</div>
     </details>
   );
@@ -119,23 +119,23 @@ function blockLinks(e: React.MouseEvent<HTMLDivElement>): void {
 /* ── tool call card ── */
 
 const TOOL_META: Record<string, { verb: string; icon: Parameters<typeof Icon>[0]['name'] }> = {
-  read_file: { verb: 'Olvasás', icon: 'file' },
-  write_file: { verb: 'Írás', icon: 'filePlus' },
-  edit_file: { verb: 'Szerkesztés', icon: 'pen' },
-  glob_files: { verb: 'Fájlkeresés', icon: 'search' },
-  grep_files: { verb: 'Keresés', icon: 'search' },
-  bash: { verb: 'Parancs', icon: 'terminal' },
-  todo_write: { verb: 'Teendők', icon: 'list' },
-  spawn_agent: { verb: 'Al-agent indítása', icon: 'agents' },
-  web_search: { verb: 'Webkeresés', icon: 'search' },
-  web_fetch: { verb: 'Oldal olvasása', icon: 'file' },
-  browser_navigate: { verb: 'Böngésző: megnyitás', icon: 'globe' },
-  browser_snapshot: { verb: 'Böngésző: elemzés', icon: 'search' },
-  browser_click: { verb: 'Böngésző: kattintás', icon: 'pen' },
-  browser_type: { verb: 'Böngésző: beírás', icon: 'file' },
-  browser_scroll: { verb: 'Böngésző: görgetés', icon: 'list' },
-  browser_screenshot: { verb: 'Képernyőkép', icon: 'camera' },
-  browser_close: { verb: 'Böngésző: bezárás', icon: 'gear' },
+  read_file: { verb: 'Read', icon: 'file' },
+  write_file: { verb: 'Write', icon: 'filePlus' },
+  edit_file: { verb: 'Edit', icon: 'pen' },
+  glob_files: { verb: 'Find files', icon: 'search' },
+  grep_files: { verb: 'Search', icon: 'search' },
+  bash: { verb: 'Command', icon: 'terminal' },
+  todo_write: { verb: 'Todos', icon: 'list' },
+  spawn_agent: { verb: 'Spawn agent', icon: 'agents' },
+  web_search: { verb: 'Web search', icon: 'search' },
+  web_fetch: { verb: 'Fetch page', icon: 'file' },
+  browser_navigate: { verb: 'Browser: open', icon: 'globe' },
+  browser_snapshot: { verb: 'Browser: inspect', icon: 'search' },
+  browser_click: { verb: 'Browser: click', icon: 'pen' },
+  browser_type: { verb: 'Browser: type', icon: 'file' },
+  browser_scroll: { verb: 'Browser: scroll', icon: 'list' },
+  browser_screenshot: { verb: 'Screenshot', icon: 'camera' },
+  browser_close: { verb: 'Browser: close', icon: 'gear' },
 };
 
 function toolArgs(name: string, summary?: string): string {
@@ -243,7 +243,7 @@ export function ToolCard({
             </button>
           )}
           <button className="tc-copy" onClick={() => void copy()}>
-            {copied ? 'Kimásolva' : 'Másolás'}
+            {copied ? 'Copied' : 'Copy'}
           </button>
           <pre>{item.content}</pre>
         </div>

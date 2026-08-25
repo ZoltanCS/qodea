@@ -13,6 +13,7 @@ interface SidebarProps {
   onDelete: (id: string) => void;
   onNewChat: () => void;
   onAddProject: () => void;
+  onHideProject: (id: string) => void;
   onBrainstorm?: () => void;
   onNewChatInProject: (cwd: string) => void;
   theme: 'dark' | 'oled' | 'nord' | 'light';
@@ -32,13 +33,13 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="side">
       <div className="side-top">
-        <button className="new-chat primary" onClick={props.onNewChat} title="Új beszélgetés">
-          + Új feladat
+        <button className="new-chat primary" onClick={props.onNewChat} title="New task">
+          + New task
         </button>
-        <button className="new-chat" onClick={() => void props.onAddProject()} title="Projekt mappa megnyitása">
-          Új projekt
+        <button className="new-chat" onClick={() => void props.onAddProject()} title="Open project folder">
+          New project
         </button>
-        <button className="new-chat brainstorm" onClick={() => props.onBrainstorm?.()} title="Brainstorm — tervezzük meg együtt">
+        <button className="new-chat brainstorm" onClick={() => props.onBrainstorm?.()} title="Brainstorm — design it together">
           Brainstorm
         </button>
       </div>
@@ -50,15 +51,15 @@ export function Sidebar(props: SidebarProps) {
           className={`side-row settings-link${props.settingsOpen ? ' on' : ''}`}
           onClick={props.onToggleSettings}
         >
-          <span className="ic"><Icon name="gear" size={14} /></span> Beállítások
+          <span className="ic"><Icon name="gear" size={14} /></span> Settings
         </button>
-        <div className="account" onClick={props.onOpenAccount} role="button" title="Profil és avatar">
+        <div className="account" onClick={props.onOpenAccount} role="button" title="Profile & avatar">
           <Avatar cfg={props.avatar} size={28} />
           <span className="acc-name">Zoltán</span>
           <span className="spacer" />
           <button
             className="mini-ic"
-            title={props.theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
+            title="Toggle theme"
             onClick={(e) => {
               e.stopPropagation();
               props.onToggleTheme();
@@ -79,10 +80,11 @@ function SessionTree({
   onOpen,
   onDelete,
   onNewChatInProject,
+  onHideProject,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // sessions grouped by cwd; stored projects always shown (even when empty)
+  // sessions grouped by cwd; hidden projects excluded; stored projects shown even when empty
   const groups = useMemo(() => {
     const byCwd = new Map<string, SessionSummary[]>();
     for (const s of [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)) {
@@ -92,23 +94,32 @@ function SessionTree({
       byCwd.set(key, list);
     }
 
+    const visibleProjects = projects.filter((p) => !p.hidden);
+    const hiddenCwds = new Set(
+      projects.filter((p) => p.hidden).map((p) => p.cwd.toLowerCase()),
+    );
+
     const usedCwds = new Set<string>();
-    const projectGroups = projects.map((p) => {
+    const projectGroups = visibleProjects.map((p) => {
       usedCwds.add(p.cwd.toLowerCase());
       return {
         key: p.cwd,
+        id: p.id,
         name: p.name,
         cwd: p.cwd,
         sessions: byCwd.get(p.cwd) ?? [],
       };
     });
 
-    // session cwds that have no stored project → their own groups
+    // session cwds with no visible project → their own groups (hidden-project cwds excluded)
     const extras = [...byCwd.entries()]
-      .filter(([cwd]) => !usedCwds.has(cwd.toLowerCase()))
+      .filter(
+        ([cwd]) => cwd !== '' && !hiddenCwds.has(cwd.toLowerCase()) && !usedCwds.has(cwd.toLowerCase()),
+      )
       .map(([cwd, sess]) => ({
-        key: cwd || '__none__',
-        name: projectName(cwd || ''),
+        key: cwd,
+        id: null,
+        name: projectName(cwd),
         cwd,
         sessions: sess,
       }));
@@ -120,7 +131,7 @@ function SessionTree({
     return (
       <div className="tree">
         <div className="tree-empty">
-          Még nincs beszélgetés.<br />Indíts egyet, vagy nyiss meg egy projektet!
+          No conversations yet.<br />Start one or open a project!
         </div>
       </div>
     );
@@ -144,8 +155,15 @@ function SessionTree({
                 {g.sessions.length > 0 && <span className="count">{g.sessions.length}</span>}
               </button>
               <button
+                className="hide-proj"
+                title="Hide project (stays on disk)"
+                onClick={() => g.id && onHideProject(g.id)}
+              >
+                <Icon name="eyeOff" size={13} />
+              </button>
+              <button
                 className="add-chat"
-                title="Új chat ebben a projektben"
+                title="New chat in this project"
                 onClick={() => onNewChatInProject(g.cwd)}
               >
                 +
@@ -155,20 +173,20 @@ function SessionTree({
             {!isCollapsed && (
               <div className="sess-list">
                 {g.sessions.length === 0 && (
-                  <div className="sess-empty">(még nincs chat)</div>
+                  <div className="sess-empty">(no chats yet)</div>
                 )}
                 {g.sessions.map((s) => (
                   <div
                     key={s.id}
                     className={`sess-row${s.id === activeSessionId ? ' on' : ''}`}
                     onClick={() => onOpen(s.id)}
-                    title={`${s.title}\n${new Date(s.updatedAt).toLocaleString('hu-HU')}`}
+                    title={`${s.title}\n${new Date(s.updatedAt).toLocaleString('en-US')}`}
                   >
                     <span className="f-file"></span>
                     <span className="t">{s.title}</span>
                     <button
                       className="del"
-                      title="Törlés"
+                      title="Remove"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDelete(s.id);

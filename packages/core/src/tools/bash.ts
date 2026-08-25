@@ -37,7 +37,7 @@ export const bashTool: Tool = {
   describe(args) {
     const cmd = String(args['command'] ?? '?');
     const bg = args['background'] === true ? ' (hátérben)' : '';
-    return `futtatja: ${cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd}${bg}`;
+    return `run: ${cmd.length > 60 ? `${cmd.slice(0, 60)}…` : cmd}${bg}`;
   },
 
   async run(rawArgs, ctx) {
@@ -92,9 +92,9 @@ function startBackground(command: string, cwd: string): string {
   const pid = child.pid ?? '?';
   child.unref();
   return [
-    '[háttérben indítva]',
+    '[started in background]',
     `PID: ${pid}`,
-    'A parancs fut — nem várunk rá. Ha kiszolgáló, ellenőrizd a portot/URL-t egy külön gyors paranccsal.',
+    'Running — not waited on. Verify the port/URL with a separate quick command.',
   ].join('\n');
 }
 

@@ -106,7 +106,7 @@ export function App() {
   const runningAgents = chat.deployedAgents.filter((a) => a.status === 'running').length;
 
   const projectLabel = (() => {
-    if (!chat.cwd.trim()) return 'Névtelen';
+    if (!chat.cwd.trim()) return 'Untitled';
     const p = chat.projects.find(
       (x) => x.cwd.toLowerCase() === chat.cwd.trim().toLowerCase(),
     );
@@ -133,10 +133,10 @@ export function App() {
         onKeyDown={onKeyDown}
         placeholder={
           running
-            ? 'Üzenet a futó agentnek… (Enter = sorba áll)'
+            ? 'Message the running agent… (Enter = queue)'
             : showHome
-              ? 'Írd le a feladatot…'
-              : 'Feladat leírása…'
+              ? 'Describe the task…'
+              : 'Describe the task…'
         }
         rows={showHome ? 3 : 2}
         autoFocus
@@ -144,8 +144,8 @@ export function App() {
       <div className="composer-row">
         <Segmented
           options={[
-            { value: 'agent', label: 'Agent', hint: 'egy agent végzi a munkát — automatikusan folytatja, míg kész' },
-            { value: 'experts', label: 'Experts', hint: 'több szakértői al-agent dolgozik párhuzamosan' },
+            { value: 'agent', label: 'Agent', hint: 'a single agent drives it to done' },
+            { value: 'experts', label: 'Experts', hint: 'specialist sub-agents work in parallel' },
           ]}
           value={chat.uiMode}
           onChange={(v) => chat.setUiMode(v as typeof chat.uiMode)}
@@ -177,7 +177,7 @@ export function App() {
         />
 
         {running && (
-          <button className="send stop" onClick={() => void chat.stop()} title="Leállítás">
+          <button className="send stop" onClick={() => void chat.stop()} title="Stop">
             Stop
           </button>
         )}
@@ -185,7 +185,7 @@ export function App() {
           className="send"
           onClick={submit}
           disabled={!draft.trim()}
-          title={running ? 'Sorba állítás (Enter)' : 'Küldés (Enter)'}
+          title={running ? 'Queue (Enter)' : 'Send (Enter)'}
         >
           ↑
         </button>
@@ -203,6 +203,7 @@ export function App() {
         onDelete={(id) => void chat.removeSession(id)}
         onNewChat={chat.newChat}
         onAddProject={() => void chat.addProject()}
+        onHideProject={(id) => void chat.hideProject(id)}
         onBrainstorm={() => void window.qodea.brainstormOpen()}
         onNewChatInProject={(cwd) => {
           chat.newChat();
@@ -268,13 +269,13 @@ export function App() {
         {showHome ? (
           <div className="home">
             <QodeaBot mood={heroMood} color="cream" size={86} />
-            <h1>Több mint chat. Megcsinálja.</h1>
-            <p className="sub">Mondd meg, mi kell — a Qodea megtervezi, megírja és lefuttatja.</p>
+            <h1>Beyond chat. Done.</h1>
+            <p className="sub">Tell it what you need — Qodea plans, writes and runs it.</p>
 
             {composerBox}
 
             <label className="folder-line" title="Melyik projektben dolgozzon?">
-              Projekt:{' '}
+              Project:{' '}
               <select
                 className="folder-select"
                 value={
@@ -284,7 +285,7 @@ export function App() {
                 }
                 onChange={(e) => void onProjectSelect(e.target.value)}
               >
-                <option value="">Névtelen</option>
+                <option value="">Untitled</option>
                 {chat.projects.map((p) => (
                   <option key={p.id} value={p.cwd}>
                     {p.name}
@@ -294,7 +295,7 @@ export function App() {
                 chat.projects.some((p) => p.cwd === chat.cwd.trim()) ? null : (
                   <option value="__custom__">{projectLabel}</option>
                 )}
-                <option value="__add__">Új projekt mappa…</option>
+                <option value="__add__">New project mappa…</option>
               </select>
             </label>
           </div>
@@ -411,17 +412,17 @@ function ProfileStats({
 
   return (
     <div className="prof-stats">
-      <SectionTitleMini>Összes használat</SectionTitleMini>
+      <SectionTitleMini>Lifetime usage</SectionTitleMini>
       <div className="ps-grid">
-        <PsCard label="Token be" value={inTok.toLocaleString('hu-HU')} />
-        <PsCard label="Token ki" value={outTok.toLocaleString('hu-HU')} />
-        <PsCard label="Cache" value={`${cached.toLocaleString('hu-HU')} (${hitRate}%)`} />
+        <PsCard label="Tokens in" value={inTok.toLocaleString('en-US')} />
+        <PsCard label="Tokens out" value={outTok.toLocaleString('en-US')} />
+        <PsCard label="Cache" value={`${cached.toLocaleString('en-US')} (${hitRate}%)`} />
         <PsCard
-          label="Becsült költség"
-          value={costKnown ? `$${cost.toFixed(2)}` : '$? (ismeretlen modell)'}
+          label="Est. cost"
+          value={costKnown ? `$${cost.toFixed(2)}` : '$? (unknown model)'}
         />
-        <PsCard label="Hívások" value={String(calls)} />
-        <PsCard label="Projektek" value={String(projects)} />
+        <PsCard label="Calls" value={String(calls)} />
+        <PsCard label="Projects" value={String(projects)} />
       </div>
     </div>
   );
@@ -519,10 +520,10 @@ function ContextRing({
         <div className="t-title">Context</div>
         <div className="t-big">{Math.round(pct * 100)}%</div>
         <div className="t-row">
-          {used.toLocaleString('hu-HU')} / {max.toLocaleString('hu-HU')} token
+          {used.toLocaleString('en-US')} / {max.toLocaleString('en-US')} token
         </div>
         {model && <div className="t-dim">{model}</div>}
-        <div className="t-dim">a teljes beszélgetés + tool eredmények beleszámítanak</div>
+        <div className="t-dim">full conversation + tool outputs count</div>
       </div>
     </div>
   );

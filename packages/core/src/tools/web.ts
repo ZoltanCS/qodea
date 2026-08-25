@@ -212,9 +212,9 @@ export const webFetchTool: Tool = {
     const contentType = '';
     void contentType;
     const text = stripTags(body);
-    if (!text.trim()) return `(az oldal nem tartalmaz kinyerhető szöveget) ${url}`;
+    if (!text.trim()) return `(page has no extractable text) ${url}`;
 
     const cut = text.slice(0, MAX_FETCH_CHARS);
-    return `[${url} · ${text.length} karakter]\n${cut}${text.length > MAX_FETCH_CHARS ? '\n[... csonkolva]' : ''}`;
+    return `[${url} · ${text.length} karakter]\n${cut}${text.length > MAX_FETCH_CHARS ? '\n[... truncated]' : ''}`;
   },
 };

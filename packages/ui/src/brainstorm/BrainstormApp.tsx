@@ -54,7 +54,7 @@ export function BrainstormApp() {
           if (ev.name === 'generate_image') {
             setItems((prev) => [
               ...prev,
-              { kind: 'assistant', id: nid(), text: 'képet generál…' },
+              { kind: 'assistant', id: nid(), text: 'generating image…' },
             ]);
           }
           break;
@@ -108,7 +108,7 @@ export function BrainstormApp() {
 
         const res = await window.qodea.startSession({
           ...(sessionId ? { sessionId } : {}),
-          task: (trimmed || 'Folytasd') + fileTexts,
+          task: (trimmed || 'Continue') + fileTexts,
           mode: 'yolo',
           cwd: '',
           brainstorm: true,
@@ -120,7 +120,7 @@ export function BrainstormApp() {
       } catch (err) {
         setItems((prev) => [
           ...prev,
-          { kind: 'assistant', id: nid(), text: `Hiba: ${err instanceof Error ? err.message : String(err)}` },
+          { kind: 'assistant', id: nid(), text: `Error: ${err instanceof Error ? err.message : String(err)}` },
         ]);
         setRunning(false);
       }
@@ -137,7 +137,7 @@ export function BrainstormApp() {
     } catch (err) {
       setItems((prev) => [
         ...prev,
-        { kind: 'assistant', id: nid(), text: `Hiba: ${err instanceof Error ? err.message : String(err)}` },
+        { kind: 'assistant', id: nid(), text: `Error: ${err instanceof Error ? err.message : String(err)}` },
       ]);
     }
   }, [sessionId]);
@@ -160,8 +160,8 @@ export function BrainstormApp() {
   if (handed) {
     return (
       <div className="bs handed">
-        <div className="bs-done">Átadva a fő agentnek.</div>
-        <div className="dim">Ez az ablak bezárul…</div>
+        <div className="bs-done">Handed to the main agent.</div>
+        <div className="dim">This window will close…</div>
       </div>
     );
   }
@@ -172,7 +172,7 @@ export function BrainstormApp() {
         {items.length === 0 && (
           <div className="bs-empty">
             <p>Brainstorm</p>
-            <p className="dim">Beszélgess a projektről — ötletek, design, terv.<br/>Amikor kész, átadjuk az agentnek.</p>
+            <p className="dim">Talk through the project — ideas, design, plan.<br/>When ready, hand it to the agent.</p>
           </div>
         )}
         {items.map((it) => (
@@ -209,7 +209,7 @@ export function BrainstormApp() {
               void send(t);
             }
           }}
-          placeholder={running ? 'gondolkodik…' : 'Írd le az ötletet…'}
+          placeholder={running ? 'thinking…' : 'Describe your idea…'}
           rows={1}
         />
         <button

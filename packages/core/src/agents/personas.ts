@@ -28,7 +28,7 @@ const READ_TOOLS = READ_ONLY_TOOLS;
 export const PERSONAS: Record<PersonaId, Persona> = {
   explorer: {
     id: 'explorer',
-    label: 'Kódbázis felderítő',
+    label: 'Codebase Explorer',
     color: '#3d8bfd',
     face: 'curious',
     toolNames: [...READ_TOOLS],
@@ -39,7 +39,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
   },
   worker: {
     id: 'worker',
-    label: 'Implementáló',
+    label: 'Implementer',
     color: '#3fae6a',
     face: 'proud',
     toolNames: [
@@ -68,7 +68,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
   },
   planner: {
     id: 'planner',
-    label: 'Tervező',
+    label: 'Planner',
     color: '#8a63e8',
     face: 'attentive',
     toolNames: [...READ_TOOLS],
@@ -89,7 +89,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
   },
   netlord: {
     id: 'netlord',
-    label: 'Netlord — webes kutató',
+    label: 'Netlord — web researcher',
     color: '#39b8a0',
     face: 'proud',
     toolNames: [
@@ -115,7 +115,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
   },
   qa: {
     id: 'qa',
-    label: 'QA szellem',
+    label: 'QA Ghost',
     color: '#c026d3',
     face: 'suspicious',
     toolNames: [

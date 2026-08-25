@@ -49,6 +49,7 @@ import {
   listSessions,
   touchSession,
 } from './store.js';
+import { setProjectHidden } from './store.js';
 import { addUsage } from './stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -564,6 +565,11 @@ function registerIpc(win: () => BrowserWindow): void {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return addProject(result.filePaths[0]!);
+  });
+
+  ipcMain.handle('qodea:projects:hide', async (_e, payload: { id: string; hidden: boolean }) => {
+    const { setProjectHidden } = await import('./store.js');
+    await setProjectHidden(payload.id, payload.hidden);
   });
 
   ipcMain.handle('qodea:projects:delete', (_e, id: string) => deleteProject(id));

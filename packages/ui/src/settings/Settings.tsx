@@ -34,14 +34,14 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: 'general', icon: 'general', label: 'Általános' },
-  { id: 'providers', icon: 'providers', label: 'Szolgáltatók' },
-  { id: 'agents', icon: 'agents', label: 'Agentek' },
-  { id: 'skills', icon: 'skills', label: 'Skillek', soon: true },
-  { id: 'plugins', icon: 'plugins', label: 'Pluginek', soon: true },
-  { id: 'integrations', icon: 'integrations', label: 'Integrációk', soon: true },
-  { id: 'themes', icon: 'themes', label: 'Témák', soon: true },
-  { id: 'about', icon: 'about', label: 'Névjegy' },
+  { id: 'general', icon: 'general', label: 'General' },
+  { id: 'providers', icon: 'providers', label: 'Providers' },
+  { id: 'agents', icon: 'agents', label: 'Agents' },
+  { id: 'skills', icon: 'skills', label: 'Skills', soon: true },
+  { id: 'plugins', icon: 'plugins', label: 'Plugins', soon: true },
+  { id: 'integrations', icon: 'integrations', label: 'Integrations', soon: true },
+  { id: 'themes', icon: 'themes', label: 'Themes', soon: true },
+  { id: 'about', icon: 'about', label: 'About' },
 ];
 
 /* ── provider drafts ──────────────────────────────────────────────────────── */
@@ -258,7 +258,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           ...(a.model.trim() ? { model: a.model.trim() } : {}),
         })),
       });
-      setSavedMsg(`Mentve: ${res.savedTo}`);
+      setSavedMsg(`Saved: ${res.savedTo}`);
       setTimeout(() => setSavedMsg(null), 2500);
       return true;
     } catch (err) {
@@ -270,7 +270,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
   return (
     <div className="settings hub">
       <header className="set-head">
-        <h2>Beállítások</h2>
+        <h2>Settings</h2>
         <button className="icon-btn" onClick={onClose} title="Bezárás">
           ✕
         </button>
@@ -317,7 +317,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 onSave={() => void saveProviders()}
               />
             ) : (
-              <div className="dim pad">Betöltés…</div>
+              <div className="dim pad">Loading…</div>
             ))}
 
           {tab === 'agents' && (
@@ -332,7 +332,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           {tab === 'general' && (
             <Placeholder
               title="Általános"
-              note="Nyelv, indítási viselkedés, automatikus frissítések és telemetria ide kerül. A világos/sötét téma váltó egyelőre a sidebar alján lévő téma-gombbal érhető el."
+              note="Language, startup behavior, auto-updates and telemetry land here. Theme switching lives on the sidebar theme button for now."
             />
           )}
 
@@ -345,12 +345,12 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 soon
                 note={
                   t.id === 'skills'
-                    ? 'SKILL.md alapú képesség-csomagok: globális és projektszintű, automatikus aktiválással.'
+                    ? 'SKILL.md capability packs: global and project scope, auto-activation.'
                     : t.id === 'plugins'
-                      ? 'Harmadik féltől származó bővítmények és egyéni toolok telepítése.'
+                      ? 'Third-party extensions and custom tools.'
                       : t.id === 'integrations'
-                        ? 'MCP szerverek, GitHub, böngésző-híd és külső szolgáltatások kapcsolása.'
-                        : 'Sajátítható témák, testreszabható megjelenés és ikon-csomagok.'
+                        ? 'MCP servers, GitHub, browser bridge and external services.'
+                        : 'Custom themes, appearance and icon packs.'
                 }
               />
             ))}
@@ -383,9 +383,9 @@ const PRESETS: PresetDef[] = [
   { id: 'together', label: 'Together', kind: 'openai-compatible', baseUrl: 'https://api.together.xyz/v1', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
   { id: 'mistral', label: 'Mistral', kind: 'openai-compatible', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
   { id: 'xai', label: 'xAI (Grok)', kind: 'openai-compatible', baseUrl: 'https://api.x.ai/v1', model: 'grok-3-mini' },
-  { id: 'ollama', label: 'Ollama (helyi)', kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+  { id: 'ollama', label: 'Ollama (local)', kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
   { id: 'azure', label: 'Azure OpenAI (v1)', kind: 'openai-compatible', baseUrl: '', model: '' },
-  { id: 'custom', label: 'Egyéni endpoint', kind: 'openai-compatible', baseUrl: '', model: '' },
+  { id: 'custom', label: 'Custom endpoint', kind: 'openai-compatible', baseUrl: '', model: '' },
 ];
 
 function ProvidersEditor(props: {
@@ -403,7 +403,7 @@ function ProvidersEditor(props: {
   onSave: () => void;
 }) {
   const active = props.drafts[props.activeIdx];
-  if (!active) return <div className="dim pad">Nincs szolgáltató.</div>;
+  if (!active) return <div className="dim pad">No providers.</div>;
 
   return (
     <div className="prov-split">
@@ -419,13 +419,13 @@ function ProvidersEditor(props: {
           </button>
         ))}
         <button className="set-add" onClick={() => props.addProvider()}>
-          + Új szolgáltató
+          + Add provider
         </button>
       </aside>
 
       <section className="set-form">
         {active.isNew && (
-          <Field label="Preset" hint="Válasz szolgáltatót — endpoint és modell előre beállítva.">
+          <Field label="Preset" hint="Pick a provider — endpoint and model prefilled.">
             <div className="preset-grid">
               {PRESETS.map((p) => (
                 <button
@@ -447,11 +447,11 @@ function ProvidersEditor(props: {
           </Field>
         )}
 
-        <Field label="Név" hint="Csak megkülönböztetéshez — semmi mást nem befolyásol.">
+        <Field label="Name" hint="Csak megkülönböztetéshez — semmi mást nem befolyásol.">
           <input
             value={active.label}
             onChange={(e) => props.patchActive({ label: e.target.value })}
-            placeholder="pl. OpenAI"
+            placeholder="e.g. OpenAI"
           />
         </Field>
 
@@ -466,13 +466,13 @@ function ProvidersEditor(props: {
 
         <Field
           label="API kulcs"
-          hint={active.hasStoredKey ? 'Van mentett kulcs — ha üresen hagyod, megmarad.' : undefined}
+          hint={active.hasStoredKey ? 'A key is stored — leave empty to keep it.' : undefined}
         >
           <input
             type="password"
             value={active.newApiKey}
             onChange={(e) => props.patchActive({ newApiKey: e.target.value })}
-            placeholder={active.hasStoredKey ? '•••••••• (mentett)' : 'kulcs…'}
+            placeholder={active.hasStoredKey ? '•••••••• (stored)' : 'key…'}
           />
         </Field>
 
@@ -485,12 +485,12 @@ function ProvidersEditor(props: {
         </Field>
 
         <button className="btn models-btn" onClick={props.loadModels} disabled={props.loadingModels}>
-          {props.loadingModels ? 'Betöltés…' : 'Elérhető modellek lekérése'}
+          {props.loadingModels ? 'Loading…' : 'Fetch available models'}
         </button>
 
         {props.models !== null &&
           (props.models.length === 0 ? (
-            <div className="model-list dim">Nincs találat</div>
+            <div className="model-list dim">No matches</div>
           ) : (
             <div className="model-list">
               {props.models.map((m) => (
@@ -506,8 +506,8 @@ function ProvidersEditor(props: {
           ))}
 
         <Field
-          label="Tartalék lánc (fallback)"
-          hint="Soronként egy: providerId modell. Ha ez a szolgáltató hibázik, ezekkel folytatódik."
+          label="Failover chain"
+          hint="One per line: providerId model. If this provider fails, the run continues with these."
         >
           <textarea
             rows={3}
@@ -524,12 +524,12 @@ function ProvidersEditor(props: {
             checked={active.isDefault}
             onChange={(e) => props.markDefault(e.target.checked)}
           />{' '}
-          legyen ez az alapértelmezett
+          set as default
         </label>
 
         {!active.isNew && (
           <button className="btn del" onClick={props.removeActive}>
-            Szolgáltató törlése
+            Delete provider
           </button>
         )}
 
@@ -537,7 +537,7 @@ function ProvidersEditor(props: {
           {props.savedMsg && <span className="saved">{props.savedMsg}</span>}
           <span className="spacer" />
           <button className="btn primary" onClick={props.onSave}>
-            Mentés
+            Save
           </button>
         </div>
       </section>
@@ -649,15 +649,15 @@ function AgentsTab({
 
       {sel && (
         <div className="ac-form">
-          <Field label="Azonosító">
+          <Field label="ID">
             <input value={sel.id} disabled={sel.isBuiltin} onChange={(e) => patch({ id: e.target.value })} />
           </Field>
 
-          <Field label="Név">
+          <Field label="Name">
             <input value={sel.name} onChange={(e) => patch({ name: e.target.value })} />
           </Field>
 
-          <Field label="Szín">
+          <Field label="Color">
             <div className="swatches" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
               {AGENT_COLORS.map((c) => (
                 <button
@@ -670,7 +670,7 @@ function AgentsTab({
             </div>
           </Field>
 
-          <Field label="Arc">
+          <Field label="Face">
             <select value={sel.face} onChange={(e) => patch({ face: e.target.value })}>
               {FACE_OPTIONS.map((f) => (
                 <option key={f} value={f}>{f}</option>
@@ -678,7 +678,7 @@ function AgentsTab({
             </select>
           </Field>
 
-          <Field label="Modell (üres = alapértelmezett)">
+          <Field label="Model (empty = default)">
             <input
               value={sel.model}
               onChange={(e) => patch({ model: e.target.value })}
@@ -686,7 +686,7 @@ function AgentsTab({
             />
           </Field>
 
-          <Field label="Rendszerprompt" hint="Kiegészíti az alap promptot — személyiség, szabályok, fókusz.">
+          <Field label="Rendszerprompt" hint="Appended to the base prompt — personality, rules, focus.">
             <textarea
               value={sel.prompt}
               onChange={(e) => patch({ prompt: e.target.value })}
@@ -694,7 +694,7 @@ function AgentsTab({
             />
           </Field>
 
-          <Field label="Engedélyezett toolok">
+          <Field label="Allowed tools">
             <div className="tools-checks">
               {ALL_TOOLS.map((t) => (
                 <button
@@ -716,11 +716,11 @@ function AgentsTab({
 
           {!sel.isBuiltin && (
             <button className="btn del" onClick={removeAgent}>
-              Agent törlése
+              Delete agent
             </button>
           )}
           {sel.isBuiltin && (
-            <p className="f-hint">Beépített agent — a módosítások felülírják az alapértelmezéseit.</p>
+            <p className="f-hint">Built-in agent — your changes override its defaults.</p>
           )}
 
           <div className="pane-actions">
@@ -730,14 +730,14 @@ function AgentsTab({
               className="btn primary"
               onClick={() => {
                 if (!sel.id.trim() || !sel.name.trim()) {
-                  setError('Az azonosító és a név kötelező.');
+                  setError('ID and name are required.');
                   return;
                 }
                 setError(null);
                 onSave();
               }}
             >
-              Mentés
+              Save
             </button>
           </div>
         </div>
@@ -759,7 +759,7 @@ function AboutTab() {
         tervezés. TypeScript + Electron + provider-független agent core.
       </p>
       <code className="dim small">github.com/ZoltanCS/qodea</code>
-      <p className="dim small">Licenc: MIT © 2026 Csala Zoltán</p>
+      <p className="dim small">License: MIT © 2026 Csala Zoltán</p>
     </div>
   );
 }
@@ -771,7 +771,7 @@ function Placeholder({ title, note, soon }: { title: string; note: string; soon?
     <div className="soon-panel">
       <h3>{title}</h3>
       <p className="dim">{note}</p>
-      {soon && <span className="badge">Hamarosan</span>}
+      {soon && <span className="badge">Soon</span>}
     </div>
   );
 }
