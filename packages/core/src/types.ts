@@ -81,6 +81,7 @@ export const providerKinds = [
   'openai',
   'cerebras',
   'zen',
+  'zen-free',
   'openai-compatible',
   'anthropic',
 ] as const;

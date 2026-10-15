@@ -27,7 +27,12 @@ export const PROVIDER_PRESETS: Record<ProviderKind, Preset> = {
   },
   zen: {
     label: 'OpenCode Zen',
-    baseUrl: 'https://opencode.ai/zen/go/v1',
+    baseUrl: 'https://opencode.ai/zen/v1',
+    apiKeyEnv: 'OPENCODE_API_KEY',
+  },
+  'zen-free': {
+    label: 'OpenCode Zen (Free)',
+    baseUrl: 'https://opencode.ai/zen/v1',
     apiKeyEnv: 'OPENCODE_API_KEY',
   },
   'openai-compatible': {

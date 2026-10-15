@@ -49,7 +49,7 @@ export const bashTool: Tool = {
     // Long-running commands (servers, watchers) must go to the background,
     // otherwise the tool would block until timeout.
     const looksLikeServer =
-      /\b(serve|serve\.|http-server|vite|next\s+(dev|start)|npm\s+run\s+dev|start|live-server|python\s+-m\s*http)\b/i.test(
+      /(?:^|[;&|]\s*)(?:npx\s+)?(?:http-server|vite(?:\s+(?:dev|serve))?|next\s+(?:dev|start)|(?:npm|pnpm|yarn)\s+(?:run\s+)?dev|live-server|python\s+-m\s+http\.server)(?:\s|$)/i.test(
         command,
       );
 
@@ -74,7 +74,7 @@ export const bashTool: Tool = {
   },
 };
 
-function startBackground(command: string, cwd: string): string {
+async function startBackground(command: string, cwd: string): Promise<string> {
   const isWin = process.platform === 'win32';
   const child = isWin
     ? spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], {
@@ -89,6 +89,7 @@ function startBackground(command: string, cwd: string): string {
         stdio: 'ignore',
         env: { ...process.env, npm_config_yes: 'true' },
       });
+  await new Promise<void>((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   const pid = child.pid ?? '?';
   child.unref();
   return [

@@ -71,7 +71,7 @@ function parseArgs(raw: Record<string, unknown>): ReadArgs {
   }
   return {
     path: p,
-    offset: typeof raw['offset'] === 'number' ? raw['offset'] : undefined,
-    limit: typeof raw['limit'] === 'number' ? raw['limit'] : undefined,
+    offset: typeof raw['offset'] === 'number' && Number.isFinite(raw['offset']) ? Math.max(1, Math.floor(raw['offset'])) : undefined,
+    limit: typeof raw['limit'] === 'number' && Number.isFinite(raw['limit']) ? Math.min(MAX_LINES, Math.max(1, Math.floor(raw['limit']))) : undefined,
   };
 }

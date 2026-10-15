@@ -239,7 +239,10 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
   const asker = async (ask: { tool: string; summary: string }) => {
     const requestId = `${sessionId}-a${++askCounter}`;
     const approved = await new Promise<boolean>((resolve) => {
-      pendingAsks.set(requestId, resolve);
+      const onAbort = () => { pendingAsks.delete(requestId); resolve(false); };
+      pendingAsks.set(requestId, (approved) => { abort.signal.removeEventListener('abort', onAbort); resolve(approved); });
+      abort.signal.addEventListener('abort', onAbort, { once: true });
+      if (abort.signal.aborted) { onAbort(); return; }
       win.webContents.send('qodea:event', sessionId, {
         type: 'permission-request',
         requestId,
@@ -314,6 +317,7 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         provider,
         model: runModel,
         task: req.task,
+        images: req.images,
         cwd: req.cwd,
         mode: req.brainstorm ? 'yolo' : req.mode,
         asker: req.brainstorm ? undefined : asker,
@@ -387,6 +391,8 @@ async function startSession(win: BrowserWindow, req: StartRequest) {
         message: err instanceof Error ? err.message : String(err),
       });
     } finally {
+      for (const resolve of pendingAsks.values()) resolve(false);
+      pendingAsks.clear();
       sessions.delete(sessionId);
     }
   })();

@@ -8,13 +8,15 @@ import { resolveApiKey } from '../config/loader.js';
  * Anthropic gets its own header scheme.
  */
 export async function fetchAvailableModels(entry: ProviderEntry): Promise<string[]> {
-  const key = resolveApiKey(entry);
+  // Zen's public catalogue does not require a key; inference still does.
+  const isZen = entry.kind === 'zen' || entry.kind === 'zen-free';
+  const key = isZen ? undefined : resolveApiKey(entry);
 
   if (entry.kind === 'anthropic') {
     const base = trimSlash(entry.baseUrl ?? PROVIDER_PRESETS.anthropic.baseUrl!);
     return parseModels(
       await fetchText(base + '/v1/models', {
-        'x-api-key': key,
+        'x-api-key': key!,
         'anthropic-version': '2023-06-01',
       }),
     );
@@ -32,18 +34,19 @@ export async function fetchAvailableModels(entry: ProviderEntry): Promise<string
   }
 
   // Azure's v1 gateway accepts both auth styles; sending both keeps every kind working.
-  return parseModels(
+  const models = parseModels(
     await fetchText(`${trimSlash(base)}/models`, {
-      Authorization: `Bearer ${key}`,
-      'api-key': key,
+      ...(key ? { Authorization: `Bearer ${key}` } : {}),
+      ...(entry.kind === 'azure' && key ? { 'api-key': key } : {}),
     }),
   );
+  return entry.kind === 'zen-free' ? models.filter(isFreeZenChatModel) : models;
 }
 
 async function fetchText(url: string, headers: Record<string, string>): Promise<string> {
   let res: Response;
   try {
-    res = await fetch(url, { headers });
+    res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
   } catch (err) {
     throw new Error(`Cannot reach ${url}: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -54,6 +57,11 @@ async function fetchText(url: string, headers: Record<string, string>): Promise<
   return body;
 }
 
+export function isFreeZenChatModel(id: string): boolean {
+  // Jev uses System One; Muse uses Responses. Neither is a Chat Completions model.
+  return (id.endsWith('-free') || id === 'big-pickle') && !/^(?:jev-|muse-)/.test(id);
+}
+
 function parseModels(body: string): string[] {
   let json: unknown;
   try {
@@ -61,10 +69,10 @@ function parseModels(body: string): string[] {
   } catch {
     throw new Error('Model list response was not valid JSON');
   }
-  const data = (json as { data?: Array<{ id?: string }> }).data;
+  const data = (json as { data?: Array<{ id?: string }> } | null)?.data;
   if (!Array.isArray(data)) return [];
   return data
-    .map((m) => m.id)
+    .map((m) => m && typeof m === 'object' ? m.id : undefined)
     .filter((id): id is string => typeof id === 'string')
     .sort((a, b) => a.localeCompare(b));
 }

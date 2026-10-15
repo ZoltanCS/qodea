@@ -1,3 +1,4 @@
+import type OpenAI from 'openai';
 import { afterAll, describe, expect, it } from 'vitest';
 import { OpenAICompatProvider } from '../src/index.js';
 import { startSseServer, type MockSseServer } from './helpers.js';
@@ -19,6 +20,28 @@ function sse(chunks: unknown[]): string {
 }
 
 describe('OpenAICompatProvider', () => {
+  it('retries unsupported optional settings without dropping tools', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const client = { chat: { completions: { create: async (body: Record<string, unknown>) => {
+      bodies.push({ ...body });
+      if (body.reasoning_effort) throw Object.assign(new Error('Unsupported parameter: reasoning_effort'), { status: 400 });
+      if (body.temperature !== undefined) throw Object.assign(new Error('temperature is not supported'), { status: 400 });
+      return (async function* () { yield { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }; })();
+    } } } } as unknown as OpenAI;
+    const provider = new OpenAICompatProvider({ id: 'test', kind: 'openai-compatible', apiKey: 'test' }, { client });
+    const events = await collect(provider.streamChat({ ...chatReq(), reasoningEffort: 'high', temperature: 0.2,
+      tools: [{ name: 'read', description: 'read', parametersJsonSchema: { type: 'object' } }] }));
+    expect(bodies).toHaveLength(3);
+    expect(bodies.every(body => Array.isArray(body.tools) && body.model === 'test-model')).toBe(true);
+    expect(events).toContainEqual({ type: 'text-delta', text: 'ok' });
+  });
+
+  it('rejects a stream that ends before a finish reason', async () => {
+    const baseUrl = await start(() => sse([{ choices: [{ delta: { content: 'partial' } }] }]));
+    const provider = new OpenAICompatProvider({ id: 'test', kind: 'openai-compatible', baseUrl, apiKey: 'test' });
+    await expect(collect(provider.streamChat(chatReq()))).rejects.toThrow('stream ended unexpectedly');
+  });
+
   it('normalizes text streaming into StreamEvents', async () => {
     const baseUrl = await start(() =>
       sse([

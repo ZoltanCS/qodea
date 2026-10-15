@@ -87,7 +87,8 @@ export function getEffectiveProviders(config: QodeaConfig): ProviderEntry[] {
 export function resolveApiKey(entry: ProviderEntry, env: NodeJS.ProcessEnv = process.env): string {
   if (entry.apiKey) return entry.apiKey;
 
-  const candidates = [entry.apiKeyEnv, PROVIDER_PRESETS[entry.kind].apiKeyEnv];
+  const candidates = [entry.apiKeyEnv, PROVIDER_PRESETS[entry.kind].apiKeyEnv,
+    ...(['zen', 'zen-free'].includes(entry.kind) ? ['ZEN_API_KEY'] : [])];
   for (const name of candidates) {
     if (!name) continue;
     const value = env[name];

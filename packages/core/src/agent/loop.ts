@@ -42,6 +42,7 @@ export type AgentEvent =
       color: string;
       face: string;
       task: string;
+  images?: string[];
     }
   | {
       type: 'subagent-done';
@@ -55,6 +56,7 @@ export interface AgentRunOptions {
   provider: Provider;
   model: string;
   task: string;
+  images?: string[];
   cwd: string;
   mode?: PermissionMode;
   /** Host-provided permission prompter. Required in `default` mode; ignored by yolo/read-only. */
@@ -85,6 +87,8 @@ export interface AgentRunOptions {
   contextWindow?: number;
   enableSubagents?: boolean;
   maxParallelSpawns?: number;
+  state?: AgentState;
+  onCheckpoint?: (messages: TurnMessage[], state: AgentState) => void;
 }
 
 export interface AgentRunResult {
@@ -124,10 +128,10 @@ async function* runAgentInner(
   opts: AgentRunOptions,
 ): AsyncGenerator<AgentEvent, AgentRunResult, unknown> {
   const mode = opts.mode ?? 'default';
-  const tools = opts.tools ?? createDefaultTools();
+  const tools = [...(opts.tools ?? createDefaultTools())];
   const specs = tools.map(toSpec);
   const toolByName = new Map(tools.map((t) => [t.name, t]));
-  const state = emptyAgentState();
+  const state = opts.state ?? emptyAgentState();
 
   const perms = new PermissionManager(mode, state, opts.asker ?? denyAll);
   const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
@@ -171,32 +175,44 @@ async function* runAgentInner(
       content:
         (opts.systemPrompt ?? buildSystemPrompt()) + (opts.systemSuffix ?? ''),
     },
-    ...(opts.initialMessages ?? []),
+    ...(opts.initialMessages ?? []).filter((m) => m.role !== 'system'),
     // continuation attempts carry the task inside initialMessages — re-appending
     // would duplicate the goal as a fresh user message on every restart.
     // Safety: if the carried transcript has NO user message, still append.
     ...(opts.skipTaskAppend &&
     (opts.initialMessages ?? []).some((m) => m.role === 'user')
       ? []
-      : [userMessage(`[cwd: ${opts.cwd}]\n\n${opts.task}`)]),
+      : [{ role: 'user' as const, content: `[cwd: ${opts.cwd}]\n\n${opts.task}`, ...(opts.images?.length ? { images: opts.images } : {}) }]),
   ];
 
   let lastUsage: Usage | undefined;
   const finish = (
     reason: AgentRunResult['reason'],
     turns: number,
-  ): AgentRunResult => ({ reason, turns, state, messages });
+  ): AgentRunResult => {
+    const answered = new Set(messages.filter(m => m.role === 'tool_result').map(m => m.callId));
+    for (const m of [...messages]) if (m.role === 'assistant') for (const call of m.toolCalls ?? []) {
+      if (!answered.has(call.id)) {
+        messages.push({ role: 'tool_result', callId: call.id, name: call.name,
+          content: 'Interrupted. Inspect actual state before retrying this action.', isError: true });
+        answered.add(call.id);
+      }
+    }
+    opts.onCheckpoint?.(messages, state);
+    return { reason, turns, state, messages };
+  };
 
   let lastCompactTurn = -99;
   let compactCount = 0;
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     drainInjects();
+    opts.onCheckpoint?.(messages, state);
 
     // ── auto-compaction at 60% context (cheap-first: clear → summarize) ──
     const ctxWindow = opts.contextWindow ?? 131_072;
     const usedEstimate = estimateTokens(
-      messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join('') +
+      JSON.stringify(messages) +
         JSON.stringify(specs),
     );
     const plan = planCompaction(messages, usedEstimate, {
@@ -206,11 +222,12 @@ async function* runAgentInner(
     if (plan.should) {
       clearStaleToolResults(messages, 2);
       const stillUsed = estimateTokens(
-        messages.map((m) => (typeof m.content === 'string' ? m.content : '')).join(''),
+        JSON.stringify(messages),
       );
       if (stillUsed >= ctxWindow * 0.6 && compactCount < 3) {
         // LLM summary of the middle slice (last `keepTail` messages stay raw)
-        const keepFrom = Math.max(1, messages.length - 8);
+        let keepFrom = Math.max(1, messages.length - 8);
+        while (keepFrom > 1 && messages[keepFrom]?.role === 'tool_result') keepFrom--;
         const slice = messages.slice(1, keepFrom);
         try {
           const sumGen = opts.provider.streamChat({
@@ -317,9 +334,10 @@ async function* runAgentInner(
 
     if (calls.length === 0) {
       messages.push({ role: 'assistant', content: text });
-      if (lastUsage) yield { type: 'usage', ...lastUsage };
-      yield { type: 'done', reason: 'complete', turns: turn };
-      return finish('complete', turn);
+
+      const reason = stop === 'length' ? 'max-turns' : stop === 'end' && text.trim() ? 'complete' : 'failed';
+      yield { type: 'done', reason, turns: turn };
+      return finish(reason, turn);
     }
 
     messages.push({ role: 'assistant', content: text, toolCalls: calls });
@@ -331,9 +349,7 @@ async function* runAgentInner(
     try {
       for (const call of others) {
         if (opts.signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
-        const gen = withBus(executeToolCall(call, toolByName, perms, state, opts), bus, () =>
-          drainInjects(),
-        );
+        const gen = withBus(executeToolCall(call, toolByName, perms, state, opts), bus);
         let outcome: ToolOutcome | undefined;
         for (;;) {
           const { value, done } = await gen.next();
@@ -345,6 +361,7 @@ async function* runAgentInner(
         }
         for (const ev of outcome!.events) yield ev;
         messages.push(outcome!.message);
+        opts.onCheckpoint?.(messages, state);
       }
 
       if (spawns.length > 0) {
@@ -377,7 +394,6 @@ async function* runAgentInner(
         while (pending.size > 0) {
           await Promise.race([Promise.allSettled([...pending]), sleep(60)]);
           for (const ev of bus.splice(0)) yield ev;
-          drainInjects();
         }
         for (const ev of bus.splice(0)) yield ev;
 
@@ -387,6 +403,7 @@ async function* runAgentInner(
             const outcome = await p;
             yield* outcome.events;
             messages.push(outcome.message);
+            opts.onCheckpoint?.(messages, state);
           } catch (err) {
             const call = spawns.find((c) => c.id === id)!;
             const content = isAbortError(err)
@@ -457,6 +474,18 @@ async function executeToolCall(
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(call.argumentsJson || '{}');
+    if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Expected a JSON object');
+    const required = tool.parametersJsonSchema['required'] as string[] | undefined;
+    for (const key of required ?? []) if (!(key in args)) throw new Error(`Missing required argument: ${key}`);
+    const properties = tool.parametersJsonSchema['properties'] as Record<string, { type?: string; enum?: unknown[] }> | undefined;
+    for (const [key, value] of Object.entries(args)) {
+      const schema = properties?.[key];
+      if (!schema) continue;
+      const actual = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
+      if (schema.type && actual !== schema.type && !(schema.type === 'integer' && typeof value === 'number' && Number.isInteger(value)))
+        throw new Error(`${key} must be ${schema.type}, got ${actual}`);
+      if (schema.enum && !schema.enum.includes(value)) throw new Error(`${key} must be one of: ${schema.enum.join(', ')}`);
+    }
   } catch (err) {
     return fail(
       `Invalid JSON arguments: ${err instanceof Error ? err.message : String(err)}`,
@@ -464,7 +493,9 @@ async function executeToolCall(
   }
 
   const summary = describeSafe(tool, args);
-  const verdict = await perms.authorize(tool, args);
+  let verdict;
+  try { verdict = await perms.authorize(tool, args); }
+  catch (err) { return fail(`Permission check failed: ${err instanceof Error ? err.message : String(err)}`); }
   if (!verdict.allowed) {
     return {
       message: {
@@ -492,6 +523,7 @@ async function executeToolCall(
       events: [...startedEvents, { type: 'tool-result', name: call.name, content, isError: false }],
     };
   } catch (err) {
+    if (opts.signal?.aborted || isAbortError(err)) throw err;
     const content = err instanceof Error ? err.message : String(err);
     return {
       message: { role: 'tool_result', callId: call.id, name: call.name, content, isError: true },

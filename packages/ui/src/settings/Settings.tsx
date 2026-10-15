@@ -14,6 +14,7 @@ const KINDS = [
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'cerebras', label: 'Cerebras' },
   { value: 'zen', label: 'OpenCode Zen' },
+  { value: 'zen-free', label: 'OpenCode Zen (Free)' },
 ];
 
 type TabId =
@@ -367,7 +368,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
 interface PresetDef {
   id: string;
   label: string;
-  kind: 'openai-compatible' | 'anthropic';
+  kind: 'openai-compatible' | 'anthropic' | 'zen' | 'zen-free';
   baseUrl: string;
   model: string;
 }
@@ -379,7 +380,8 @@ const PRESETS: PresetDef[] = [
   { id: 'groq', label: 'Groq', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
   { id: 'deepseek', label: 'DeepSeek', kind: 'openai-compatible', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
   { id: 'cerebras', label: 'Cerebras', kind: 'openai-compatible', baseUrl: 'https://api.cerebras.ai/v1', model: 'llama3.3-70b' },
-  { id: 'zen', label: 'OpenCode Zen', kind: 'openai-compatible', baseUrl: 'https://opencode.ai/zen/go/v1', model: 'grok-code-fast-1' },
+  { id: 'zen', label: 'OpenCode Zen', kind: 'zen', baseUrl: 'https://opencode.ai/zen/v1', model: '' },
+  { id: 'zen-free', label: 'OpenCode Zen (Free)', kind: 'zen-free', baseUrl: 'https://opencode.ai/zen/v1', model: '' },
   { id: 'together', label: 'Together', kind: 'openai-compatible', baseUrl: 'https://api.together.xyz/v1', model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
   { id: 'mistral', label: 'Mistral', kind: 'openai-compatible', baseUrl: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
   { id: 'xai', label: 'xAI (Grok)', kind: 'openai-compatible', baseUrl: 'https://api.x.ai/v1', model: 'grok-3-mini' },
@@ -434,6 +436,7 @@ function ProvidersEditor(props: {
                   onClick={() =>
                     props.patchActive({
                       id: p.id,
+                      kind: p.kind,
                       label: p.label,
                       baseUrl: p.baseUrl,
                       defaultModel: p.model,
@@ -487,6 +490,10 @@ function ProvidersEditor(props: {
         <button className="btn models-btn" onClick={props.loadModels} disabled={props.loadingModels}>
           {props.loadingModels ? 'Loading…' : 'Fetch available models'}
         </button>
+
+        {active.kind === 'zen-free' && (
+          <p className="dim">Az élő Zen-listából csak az ingyenes Chat Completions modellek. A listázáshoz nem kell kulcs, a használathoz OpenCode API-kulcs szükséges. Nincs automatikus váltás fizetős modellre.</p>
+        )}
 
         {props.models !== null &&
           (props.models.length === 0 ? (

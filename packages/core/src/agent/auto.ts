@@ -12,11 +12,10 @@ function isAbortSignalAborted(signal?: AbortSignal): boolean {
   return Boolean(signal?.aborted);
 }
 
-const DONE_RE = /\[DONE\]/i;
-const ATTEMPT_MAX_TURNS = 25;
-const ABORT_GRACE_MS = 400;
 
-export interface AutoLoopOptions extends Omit<AgentRunOptions, 'initialMessages'> {
+const ATTEMPT_MAX_TURNS = 25;
+
+export interface AutoLoopOptions extends AgentRunOptions {
   /** Hard wall-clock limit (default 8 hours). */
   wallClockMs?: number;
   /** Event silence that counts as a stall (default 10 minutes). */
@@ -34,11 +33,6 @@ export interface AutoLoopOptions extends Omit<AgentRunOptions, 'initialMessages'
   failovers?: Array<{ provider: Provider; model: string }>;
   /** Stall timeout grows 50% per same-provider retry, capped here (default 30 min). */
   maxStallTimeoutMs?: number;
-}
-
-interface AttemptOutcome {
-  result: AgentRunResult;
-  error?: unknown;
 }
 
 type NextRes = { done: boolean; value?: AgentEvent; err?: unknown; stalled?: boolean };
@@ -72,10 +66,6 @@ function nextWithTimeout(
   });
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 class StallSignal extends Error {
   constructor() {
     super('watchdog: event silence');
@@ -94,8 +84,8 @@ export async function* runAgentAuto(
   const restartBaseDelayMs = opts.restartBaseDelayMs ?? 1500;
 
   const startedAt = Date.now();
-  const state = emptyAgentState();
-  let messages: TurnMessage[] = [];
+  let state = opts.state ?? emptyAgentState();
+  let messages: TurnMessage[] = [...(opts.initialMessages ?? [])];
 
   const finish = (reason: AgentRunResult['reason'], turns: number): AgentRunResult => ({
     reason,
@@ -106,15 +96,17 @@ export async function* runAgentAuto(
 
   let restarts = 0;
   let attempt = 0;
+  let failoverIndex = 0;
   let consecutiveErrors = 0;
   let lastErrorKey = '';
   let attemptStallMs = stallTimeoutMs; // grows 50% per same-provider concrete-error retry
-  let regenCount = 0; // empty/invalid response regenerations since last success
 
   for (;;) {
     attempt_loop: {
       attempt++;
       const attemptAc = new AbortController();
+      const deadlineTimer = setTimeout(() => attemptAc.abort(), Math.max(0, wallClockMs - (Date.now() - startedAt)));
+      if (opts.signal?.aborted) attemptAc.abort();
       const onOuterAbort = () => attemptAc.abort();
       opts.signal?.addEventListener('abort', onOuterAbort, { once: true });
 
@@ -127,7 +119,7 @@ export async function* runAgentAuto(
 
         // ── failover chain: cycle provider/model per attempt ──
         const chain = opts.failovers ?? [];
-        const step = chain.length > 0 ? (attempt - 1) % (chain.length + 1) : 0;
+        const step = chain.length > 0 ? failoverIndex % (chain.length + 1) : 0;
         const useFailover = step > 0 && chain.length > 0;
         const stepCfg = useFailover ? chain[(step - 1) % chain.length] : undefined;
 
@@ -135,8 +127,12 @@ export async function* runAgentAuto(
           provider: stepCfg ? stepCfg.provider : opts.provider,
           model: stepCfg ? stepCfg.model : opts.model,
           task: opts.task,
+          images: opts.images,
           cwd: opts.cwd,
-          mode: opts.mode ?? 'yolo',
+          mode: opts.mode ?? 'default',
+          tools: opts.tools,
+          state,
+          onCheckpoint: (transcript, currentState) => { messages = transcript; state = currentState; },
           ...(opts.asker ? { asker: opts.asker } : {}),
           ...(opts.systemPrompt ? { systemPrompt: opts.systemPrompt } : {}),
           ...(opts.systemSuffix ? { systemSuffix: opts.systemSuffix } : {}),
@@ -151,11 +147,11 @@ export async function* runAgentAuto(
             : {}),
           ...(opts.agents ? { agents: opts.agents } : {}),
           signal: attemptAc.signal,
-          maxTurns: ATTEMPT_MAX_TURNS,
+          maxTurns: opts.maxTurns ?? ATTEMPT_MAX_TURNS,
           ...(opts.injectQueue ? { injectQueue: opts.injectQueue } : {}),
           contextWindow: opts.contextWindow,
           ...(messages.length > 0
-            ? { initialMessages: messages, skipTaskAppend: true }
+            ? { initialMessages: messages, skipTaskAppend: attempt > 1 || opts.skipTaskAppend }
             : {}),
         };
 
@@ -170,7 +166,7 @@ export async function* runAgentAuto(
           if (attemptAc.signal.aborted || Date.now() - startedAt > wallClockMs) {
             throw StallOrAbort(attemptAc.signal.aborted);
           }
-          const budget = Math.max(250, attemptStallMs - (Date.now() - lastActivity));
+          const budget = Math.max(1, Math.min(attemptStallMs - (Date.now() - lastActivity), wallClockMs - (Date.now() - startedAt)));
           const res: NextRes = await nextWithTimeout(gen, budget);
           if (res.stalled) throw new StallSignal();
           if (res.err) {
@@ -184,7 +180,7 @@ export async function* runAgentAuto(
           }
           if (res.value) {
             lastActivity = Date.now();
-            yield res.value;
+            if (res.value.type !== 'done') yield res.value;
           }
         }
         void pumpErr; // non-abort stream errors are surfaced via result-less throw below
@@ -196,9 +192,14 @@ export async function* runAgentAuto(
 
         // ── attempt finished cleanly ──
         messages = result.messages;
+        state = result.state;
         consecutiveErrors = 0;
         attemptStallMs = stallTimeoutMs; // success resets the stall budget
 
+        if (!opts.signal?.aborted && Date.now() - startedAt >= wallClockMs) {
+          yield { type: 'done', reason: 'time-limit', turns: attempt };
+          return finish('time-limit', attempt);
+        }
         if (result.reason === 'aborted' || isAbortSignalAborted(opts.signal)) {
           yield { type: 'done', reason: 'aborted', turns: attempt };
           return finish('aborted', attempt);
@@ -221,35 +222,9 @@ export async function* runAgentAuto(
           break attempt_loop;
         }
 
-        // ── empty/invalid response: regenerate the last answer once, then failover ──
-        const isEmptyResponse =
-          result.reason === 'complete' &&
-          !finalText.trim() &&
-          !result.messages.some((m) => m.role === 'tool_result');
-        if (isEmptyResponse && regenCount < 1) {
-          regenCount++;
-          // drop the empty assistant tail so the retry generates fresh
-          messages = messages.filter(
-            (m, i) => !(i === messages.length - 1 && m.role === 'assistant'),
-          );
-          yield {
-            type: 'auto-note',
-            text: 'empty response — regenerating last answer…',
-          };
-          break attempt_loop; // immediate retry, no restart-count
-        }
+        if (result.reason === 'failed') throw new Error('stream ended unexpectedly or returned an empty response');
 
-        if (DONE_RE.test(finalText)) {
-          yield { type: 'done', reason: 'complete', turns: attempt };
-          return finish('complete', attempt);
-        }
-
-        // ── anti-infinite-loop guard ──
-        // If the model finished WITHOUT using any tool and without the [DONE]
-        // marker, this was conversation / a plain answer — not an unfinished
-        // goal. Continuing would re-generate the same answer forever.
-        const usedTools = result.messages.some((m) => m.role === 'tool_result');
-        if (!usedTools) {
+        if (result.reason === 'complete' && finalText.trim()) {
           yield { type: 'done', reason: 'complete', turns: attempt };
           return finish('complete', attempt);
         }
@@ -261,13 +236,40 @@ export async function* runAgentAuto(
         };
         break attempt_loop;
       } catch (err) {
-        const aborted = isAbortError(err) || attemptAc.signal.aborted || isAbortSignalAborted(opts.signal);
+        attemptAc.abort();
+        if (Date.now() - startedAt >= wallClockMs) {
+          yield { type: 'done', reason: 'time-limit', turns: attempt };
+          return finish('time-limit', attempt);
+        }
+        const aborted = isAbortSignalAborted(opts.signal) || isAbortError(err);
         opts.signal?.removeEventListener('abort', onOuterAbort);
         if (aborted) {
           yield { type: 'done', reason: 'aborted', turns: attempt };
           return finish('aborted', attempt);
         }
 
+        // Complete interrupted tool batches before sending this transcript again.
+        const answered = new Set(messages.filter((m) => m.role === 'tool_result').map((m) => m.callId));
+        for (const message of [...messages]) {
+          if (message.role !== 'assistant') continue;
+          for (const call of message.toolCalls ?? []) {
+            if (!answered.has(call.id)) {
+              messages.push({ role: 'tool_result', callId: call.id, name: call.name,
+                content: 'Execution interrupted. Inspect actual state before retrying; the action may have partially completed.', isError: true });
+              answered.add(call.id);
+            }
+          }
+        }
+        const apiError = err as { status?: number; headers?: Headers | Record<string, string>; message?: string };
+        const status = apiError?.status;
+        const permanent = (status !== undefined && status >= 400 && status < 500 && ![408, 409, 429].includes(status)) ||
+          /insufficient_quota|billing|credit balance|payment required/i.test(apiError?.message ?? '');
+        if (permanent) {
+          yield { type: 'auto-note', text: `Request cannot be retried: ${apiError.message ?? String(err)}` };
+          yield { type: 'done', reason: 'failed', turns: attempt };
+          return finish('failed', attempt);
+        }
+        failoverIndex++;
         restarts++;
         const reason = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
         const key = reason.slice(0, 160);
@@ -286,25 +288,23 @@ export async function* runAgentAuto(
           return finish('failed', attempt);
         }
 
-        // concrete error → fixed 5s retry; stall → exponential backoff.
+        // Respect provider cooldowns and back off between retries.
         // Watchdog budget grows 50% per retry so slow providers get room.
         const isStall = /StallError|watchdog/i.test(reason);
         const delay = isStall
           ? Math.min(30_000, restartBaseDelayMs * 2 ** (restarts - 1))
-          : 5_000;
-        attemptStallMs = Math.min(attemptStallMs * 1.5, 1_800_000);
+          : Math.min(60_000, restartBaseDelayMs * 2 ** (restarts - 1));
+        const retryAfter = apiError.headers instanceof Headers ? apiError.headers.get('retry-after') : apiError.headers?.['retry-after'];
+        const retryMs = retryAfter ? (Number.isFinite(Number(retryAfter)) ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now()) : 0;
+        const waitMs = Math.min(Math.max(delay, Number.isFinite(retryMs) ? retryMs : 0), Math.max(0, wallClockMs - (Date.now() - startedAt)));
+        attemptStallMs = Math.min(attemptStallMs * 1.5, opts.maxStallTimeoutMs ?? 1_800_000);
 
-        yield { type: 'auto-restart', attempt, reason, delayMs: delay };
+        yield { type: 'auto-restart', attempt, reason, delayMs: waitMs };
         await new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, delay);
-          opts.signal?.addEventListener(
-            'abort',
-            () => {
-              clearTimeout(t);
-              resolve();
-            },
-            { once: true },
-          );
+          const onAbort = () => { clearTimeout(t); opts.signal?.removeEventListener('abort', onAbort); resolve(); };
+          const t = setTimeout(() => { opts.signal?.removeEventListener('abort', onAbort); resolve(); }, waitMs);
+          opts.signal?.addEventListener('abort', onAbort, { once: true });
+          if (opts.signal?.aborted) onAbort();
         });
         if (isAbortSignalAborted(opts.signal)) {
           yield { type: 'done', reason: 'aborted', turns: attempt };
@@ -312,6 +312,8 @@ export async function* runAgentAuto(
         }
         break attempt_loop; // relaunch
       } finally {
+        clearTimeout(deadlineTimer);
+        attemptAc.abort();
         opts.signal?.removeEventListener('abort', onOuterAbort);
       }
     }

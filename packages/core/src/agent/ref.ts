@@ -16,6 +16,6 @@ export function isAbortError(err: unknown): boolean {
   return (
     e.name === 'AbortError' ||
     e.name === 'APIUserAbortError' ||
-    /abort|cancel/i.test(e.message ?? '')
+    /^(?:aborted|cancelled|canceled)(?: by user)?$/i.test(e.message ?? '')
   );
 }

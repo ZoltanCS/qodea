@@ -108,7 +108,7 @@ export class AnthropicProvider implements Provider {
       entry.baseUrl ??
       PROVIDER_PRESETS.anthropic.baseUrl ??
       'https://api.anthropic.com';
-    this.client = new Anthropic({ apiKey, baseURL });
+    this.client = new Anthropic({ apiKey, baseURL, timeout: 120_000, maxRetries: 2 });
   }
 
   async *streamChat(req: ChatRequest): AsyncGenerator<StreamEvent, void, unknown> {
@@ -148,6 +148,7 @@ export class AnthropicProvider implements Provider {
       { signal: req.signal },
     );
 
+    let completed = false;
     let cachedTokens: number | undefined;
   let inputTokens: number | undefined;
     let outputTokens: number | undefined;
@@ -197,12 +198,16 @@ export class AnthropicProvider implements Provider {
         case 'message_delta': {
           outputTokens = event.usage?.output_tokens;
           stopReason = mapStopReason(event.delta.stop_reason);
+          if (event.delta.stop_reason) completed = true;
           break;
         }
-        // message_stop / ping / other block types need no handling here
+        case 'message_stop':
+          completed = true;
+          break;
       }
     }
 
+    if (!completed) throw new Error('stream ended unexpectedly before a terminal message event');
     yield { type: 'usage', inputTokens, outputTokens, cachedTokens };
     yield { type: 'done', stopReason };
   }

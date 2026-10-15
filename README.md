@@ -74,3 +74,14 @@ Without a config file, well-known env vars are auto-detected:
 ## License
 
 [MIT](./LICENSE)
+
+### OpenCode Zen (Free)
+
+In Settings → Providers, add the **OpenCode Zen (Free)** preset, fetch the
+available models, choose one, enter your OpenCode API key, and save. The public
+catalogue is refreshed on each fetch; only free Chat Completions models are
+listed (including Big Pickle). Jev/System One and Muse/Responses models are
+excluded because this adapter uses Chat Completions. An empty catalogue stays
+empty rather than falling back to paid models. The provider rejects manually
+entered paid model IDs. Free availability and rate limits are controlled by
+OpenCode. API keys can also come from OPENCODE_API_KEY or ZEN_API_KEY.

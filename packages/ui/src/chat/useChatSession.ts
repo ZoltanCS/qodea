@@ -416,6 +416,8 @@ export function useChatSession() {
           setDeployedAgents((prev) =>
             prev.map((a) => (a.status === 'running' ? { ...a, status: 'done' as const } : a)),
           );
+          if (ev.reason === 'failed') setErrorBanner('A futtatás sikertelen. A hiba részleteit az előzményekben találod; ellenőrizd a szolgáltatót és a modellt.');
+          if (ev.reason === 'time-limit') setErrorBanner('A futtatás elérte az időkorlátot. Az előzmények megmaradtak.');
           flashMood(ev.reason === 'complete' ? 'success' : 'error', 2600);
           break;
         }

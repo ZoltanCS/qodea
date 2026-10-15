@@ -31,6 +31,7 @@ export const editTool: Tool = {
 
   async run(rawArgs, ctx) {
     const args = parseArgs(rawArgs);
+    if (!args.old_string) throw new InvalidArgsError('old_string must not be empty');
     if (args.old_string === args.new_string) {
       throw new InvalidArgsError('old_string and new_string are identical');
     }

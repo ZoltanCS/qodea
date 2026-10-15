@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { isFreeZenChatModel } from './models.js';
 import { resolveApiKey } from '../config/loader.js';
 import type { ProviderEntry } from '../config/schema.js';
 import { PROVIDER_PRESETS } from './presets.js';
@@ -49,7 +50,7 @@ export class OpenAICompatProvider implements Provider {
         `[${entry.id}] "baseUrl" is required for kind "${this.kind}" — add it to ~/.qodea/config.json.`,
       );
     }
-    this.client = new OpenAI({ apiKey, baseURL });
+    this.client = new OpenAI({ apiKey, baseURL, timeout: 120_000, maxRetries: 2 });
   }
 
   protected modelFor(model: string): string {
@@ -58,9 +59,11 @@ export class OpenAICompatProvider implements Provider {
 
   async *streamChat(req: ChatRequest): AsyncGenerator<StreamEvent, void, unknown> {
     const model = this.modelFor(req.model);
+    if (this.kind === 'zen-free' && !isFreeZenChatModel(model)) {
+      throw Object.assign(new Error('Choose a free Chat Completions model from the OpenCode Zen (Free) model list.'), { status: 400 });
+    }
 
-    const stream = await this.client.chat.completions.create(
-      {
+    const body: OpenAI.ChatCompletionCreateParamsStreaming = {
         model,
         stream: true,
         messages: req.messages.map(toWireMessage),
@@ -78,12 +81,29 @@ export class OpenAICompatProvider implements Provider {
           : {}),
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
         ...(req.reasoningEffort ? { reasoning_effort: req.reasoningEffort } : {}),
-        // NOTE: max_tokens keeps compat with non-OpenAI endpoints; newer OpenAI
-        // models accept it as an alias of max_completion_tokens.
-        ...(req.maxTokens !== undefined ? { max_tokens: req.maxTokens } : {}),
-      },
-      { signal: req.signal },
-    );
+        ...(req.maxTokens !== undefined
+          ? this.kind === 'openai' ? { max_completion_tokens: req.maxTokens } : { max_tokens: req.maxTokens }
+          : {}),
+      };
+    let stream;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        stream = await this.client.chat.completions.create(body, { signal: req.signal });
+        break;
+      } catch (error) {
+        const e = error as { status?: number; message?: string; param?: string };
+        const detail = `${e.param ?? ''} ${e.message ?? ''}`;
+        if (e.status !== 400 || !/unsupported|not supported|not allowed|only.*supported|unknown parameter/i.test(detail)) throw error;
+        // Negotiate optional features only. Never drop tools, messages or the model.
+        if (/reasoning_effort/.test(detail) && body.reasoning_effort !== undefined) delete body.reasoning_effort;
+        else if (/temperature/.test(detail) && body.temperature !== undefined) delete body.temperature;
+        else if (/max_tokens/.test(detail) && body.max_tokens !== undefined) {
+          body.max_completion_tokens = body.max_tokens;
+          delete body.max_tokens;
+        } else throw error;
+      }
+    }
+    if (!stream) throw new Error('Provider rejected optional request parameters after compatibility retries');
 
     const pendingTools = new Map<number, { id: string; name: string; args: string }>();
     let usage: { inputTokens?: number; outputTokens?: number; cachedTokens?: number } | undefined;
@@ -121,6 +141,7 @@ export class OpenAICompatProvider implements Provider {
           slot = { id: tc.id ?? `call_${idx}`, name: '', args: '' };
           pendingTools.set(idx, slot);
         }
+        if (tc.id) slot.id = tc.id;
         if (tc.function?.name && !slot.name) slot.name = tc.function.name;
         if (tc.function?.arguments) slot.args += tc.function.arguments;
       }
@@ -133,8 +154,7 @@ export class OpenAICompatProvider implements Provider {
     }
 
     if (!finished) {
-      yield* flushTools(pendingTools);
-      yield { type: 'done', stopReason: 'other' };
+      throw new Error('stream ended unexpectedly before finish_reason');
     }
     if (usage) yield { type: 'usage', ...usage };
   }
